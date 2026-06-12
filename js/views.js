@@ -1114,11 +1114,27 @@ const AppViews = {
         ${Store.getActiveProjects().map((p)=>`<option value="${p.id}" ${s.focusProjectId===p.id?'selected':''}>${Utils.esc(p.name)}</option>`).join('')}</select></div>
       <div class="settings-box mb"><h3>Saved searches</h3>
         ${(s.savedSearches||[]).map((sr)=>`<div class="item-card mb mini">${Utils.esc(sr.name)}</div>`).join('')||'<p class="muted">None</p>'}</div>
+      <div class="settings-box mb"><h3>Cloud sync (PC + phone)</h3>
+        <p class="muted mb sm">One account, same tasks everywhere. Uses free <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase</a> (Auth + Firestore).</p>
+        <p class="muted mb sm"><strong>Setup once:</strong> Firebase → Create project → Authentication (Email) → Firestore → paste config below.</p>
+        <textarea class="form-control" id="firebase-config-json" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'>${Utils.esc(s.firebaseConfig ? JSON.stringify(s.firebaseConfig, null, 2) : '')}</textarea>
+        <button class="btn btn-sm mt" data-action="save-firebase-config">Save Firebase config</button>
+        <p class="muted mt sm">${typeof CloudSync !== 'undefined' ? CloudSync.statusText() : ''}${s.cloudEmail ? ` · ${Utils.esc(s.cloudEmail)}` : ''}</p>
+        <div class="btn-row mt">
+          <button class="btn btn-sm btn-primary" data-action="cloud-sync-now">↻ Sync now</button>
+        </div></div>
+      <div class="settings-box mb"><h3>App update</h3>
+        <p class="muted mb">Version <strong>${APP_VERSION}</strong> · ${typeof AppUpdate !== 'undefined' ? AppUpdate.statusLabel() : ''}</p>
+        <div class="btn-row">
+          <button class="btn btn-sm" data-action="check-app-update">Check for updates</button>
+          <button class="btn btn-sm btn-primary" data-action="apply-app-update">↻ Update app</button>
+        </div>
+        <p class="muted sm mt">Use after a new GitHub deploy — no need to reinstall the PWA.</p></div>
       <div class="settings-box mb"><h3>Account</h3>
-        <p class="muted mb">Login is stored only on this device. Face ID can be enabled from the login screen.</p>
+        <p class="muted mb">${CloudSync.isConfigured() ? 'Cloud login syncs across devices. Face ID works on this device.' : 'Local login on this device only — enable cloud sync above.'}</p>
         <button class="btn btn-sm btn-ghost danger-left" data-action="logout">Sign out</button></div>
       <div class="settings-box about-box"><div class="brand-icon lg">C</div><h2>Candeias</h2><p class="green">candeias.dev</p>
-      <p class="muted">Organize. Build. Live.</p><p>Version 3.0 — full examples</p>
+      <p class="muted">Organize. Build. Live.</p><p>Version ${APP_VERSION}</p>
       <button class="btn btn-sm mt" data-action="reset-demo">↺ Reload examples</button>
       <a href="https://candeias.dev" target="_blank" class="btn btn-sm mt">Visit site</a></div>`;
   },

@@ -230,6 +230,7 @@ function defaultState() {
   const demo = buildDemoData();
   return {
     version: 3,
+    cloudUpdatedAt: null,
     areas: structuredClone(DEFAULT_AREAS),
     clients: demo.clients,
     projects: demo.projects,
@@ -273,6 +274,9 @@ function defaultState() {
       subscriptionCategories: defaultSubscriptionCategories(),
       emailAccounts: defaultEmailAccounts(),
       googleClientId: '',
+      firebaseConfig: null,
+      cloudEmail: '',
+      lastCloudSync: null,
       disciplines: defaultDisciplines(),
       customTemplates: [],
       areaFiltersCollapsed: false,

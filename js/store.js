@@ -135,6 +135,7 @@ function migrateState(raw) {
     return defaultState();
   }
   const state = { ...defaultState(), ...raw, version: 3 };
+  state.cloudUpdatedAt = raw.cloudUpdatedAt || null;
   state.areas = raw.areas?.length ? raw.areas : DEFAULT_AREAS;
   state.clients = (raw.clients || []).map(migrateClient);
   state.projects = (raw.projects || []).map(migrateProject);
@@ -195,8 +196,14 @@ const Store = {
     }
   },
 
-  save() {
+  save(opts = {}) {
+    if (!opts.skipCloud) {
+      this.state.cloudUpdatedAt = new Date().toISOString();
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    if (!opts.skipCloud && typeof CloudSync !== 'undefined') {
+      CloudSync.scheduleUpload();
+    }
   },
 
   reset() {

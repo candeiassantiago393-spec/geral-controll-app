@@ -44,6 +44,8 @@ const App = {
     this.applyAccessibility();
     Object.assign(this, AppViews, AppModals);
     this.bindGlobalEvents();
+    AppUpdate.init();
+    CloudSync.init();
     this.renderWorkspaceBar();
     this.renderAreaFilters();
     this.bindAreaFiltersToggle();
@@ -1183,6 +1185,40 @@ const App = {
       case 'new-client-project': this.openProjectModal(id); break;
       case 'client-vault': this.navigate('vault'); this.openVaultModal(null, id); break;
       case 'logout': Auth.logout(); break;
+      case 'save-firebase-config': {
+        const raw = document.getElementById('firebase-config-json')?.value.trim();
+        if (!raw) { alert('Paste Firebase config JSON.'); break; }
+        try {
+          const config = JSON.parse(raw);
+          if (!config.apiKey || !config.projectId) throw new Error('Missing apiKey or projectId');
+          CloudSync.saveConfig(config);
+          alert('Firebase saved! Reload and sign in with your cloud account.');
+          location.reload();
+        } catch (e) {
+          alert(`Invalid config: ${e.message}`);
+        }
+        break;
+      }
+      case 'cloud-sync-now':
+        try {
+          await CloudSync.ensureReady();
+          if (!CloudSync.isSignedIn()) { alert('Sign in with cloud account first (logout → login).'); break; }
+          await CloudSync.pullFromCloud();
+          await CloudSync.pushToCloud();
+          alert('Sync complete!');
+          this.render();
+        } catch (e) {
+          alert(`Sync failed: ${e.message}`);
+        }
+        break;
+      case 'check-app-update':
+        await AppUpdate.checkVersion();
+        alert(AppUpdate.updateReady ? `Update available: v${AppUpdate.remoteVersion}` : `Up to date (v${APP_VERSION})`);
+        this.render();
+        break;
+      case 'apply-app-update':
+        await AppUpdate.applyUpdate();
+        break;
       case 'close-modal': this.closeModal(); break;
     }
   },

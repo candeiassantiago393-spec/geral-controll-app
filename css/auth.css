@@ -88,3 +88,16 @@
   text-align: center;
   margin-top: 12px;
 }
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--green-glow);
+  border-bottom: 1px solid var(--border-accent);
+  font-size: 13px;
+}
+
+.update-banner.hidden { display: none; }
