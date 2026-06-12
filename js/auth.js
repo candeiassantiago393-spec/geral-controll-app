@@ -38,7 +38,8 @@ const Auth = {
     sessionStorage.removeItem(this.SESSION_KEY);
     localStorage.removeItem(this.REMEMBER_KEY);
     if (typeof CloudSync !== 'undefined' && CloudSync.isSignedIn()) {
-      CloudSync.signOut().finally(() => location.reload());
+      CloudSync.signOut();
+      location.reload();
       return;
     }
     location.reload();
@@ -273,6 +274,96 @@ const Auth = {
     }
   },
 
+  renderRenderLogin(onSuccess) {
+    const gate = document.getElementById('login-gate');
+    if (!gate) return;
+    const faceAvailable = this.supportsWebAuthn();
+    const faceRegistered = this.hasFaceId();
+    gate.innerHTML = `
+      <div class="login-card">
+        <div class="brand-icon lg login-logo">C</div>
+        <h1 class="login-title">Candeias</h1>
+        <p class="login-sub muted">Private app — password required.<br>Same data on PC and phone.</p>
+        <form id="render-login-form" class="login-form">
+          <div class="form-group">
+            <label>Password</label>
+            <input class="form-control" type="password" name="pass" autocomplete="current-password" required placeholder="Your app password">
+          </div>
+          <label class="checkbox-row login-remember">
+            <input type="checkbox" name="remember" checked> Keep me signed in
+          </label>
+          <p class="login-error hidden" id="login-error"></p>
+          <button type="submit" class="btn btn-primary w100 login-submit">Sign in</button>
+        </form>
+        ${faceAvailable ? `
+          <div class="login-divider"><span>or</span></div>
+          <button type="button" class="btn w100 login-face-btn" id="login-face-btn">🔐 Face ID / Touch ID</button>
+          <p class="muted sm login-face-hint">${faceRegistered ? 'Quick unlock on this device (after password once).' : 'Sign in with password first, then enable Face ID.'}</p>
+        ` : ''}
+      </div>`;
+
+    const errEl = document.getElementById('login-error');
+    const showErr = (msg) => { errEl.textContent = msg; errEl.classList.remove('hidden'); };
+    const form = document.getElementById('render-login-form');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.classList.add('hidden');
+      const fd = new FormData(form);
+      try {
+        await CloudSync.renderLogin(fd.get('pass'), !!fd.get('remember'));
+        this.setSession(!!fd.get('remember'));
+        CloudSync.startAutoSync();
+        this.showApp();
+        onSuccess?.();
+      } catch (ex) {
+        showErr(ex.message || 'Sign in failed.');
+      }
+    });
+
+    document.getElementById('login-face-btn')?.addEventListener('click', async () => {
+      errEl.classList.add('hidden');
+      try {
+        if (faceRegistered && CloudSync.isSignedIn()) {
+          await this.loginWithFaceId();
+          this.showApp();
+          onSuccess?.();
+        } else if (CloudSync.isSignedIn()) {
+          await this.registerFaceId();
+          alert('Face ID enabled on this device.');
+        } else {
+          const pass = form.querySelector('[name=pass]')?.value;
+          if (!pass) {
+            showErr('Enter password first.');
+            return;
+          }
+          await CloudSync.renderLogin(pass, true);
+          await this.registerFaceId();
+          this.setSession(true);
+          CloudSync.startAutoSync();
+          alert('Face ID enabled.');
+          this.showApp();
+          onSuccess?.();
+        }
+      } catch (ex) {
+        showErr(ex.message || 'Biometric failed.');
+      }
+    });
+
+    if (faceRegistered && faceAvailable && CloudSync.isSignedIn()) {
+      setTimeout(async () => {
+        try {
+          await this.loginWithFaceId();
+          CloudSync.startAutoSync();
+          this.showApp();
+          onSuccess?.();
+        } catch {
+          /* cancelled */
+        }
+      }, 400);
+    }
+  },
+
   renderCloudLogin(onSuccess) {
     const gate = document.getElementById('login-gate');
     if (!gate) return;
@@ -361,6 +452,26 @@ const Auth = {
     return new Promise(async (resolve) => {
       if (typeof CloudSync !== 'undefined') {
         await CloudSync.init();
+
+        if (CloudSync.isRenderMode()) {
+          if (CloudSync.isSignedIn()) {
+            await CloudSync.pullFromCloud().catch(() => {});
+            this.setSession(true);
+            CloudSync.startAutoSync();
+            this.showApp();
+            onSuccess?.();
+            resolve(true);
+            return;
+          }
+          if (this.isAuthenticated() && this.hasFaceId()) {
+            this.renderRenderLogin(onSuccess);
+            resolve(true);
+            return;
+          }
+          this.renderRenderLogin(() => { onSuccess?.(); resolve(true); });
+          return;
+        }
+
         if (CloudSync.isConfigured() && CloudSync.isSignedIn()) {
           await CloudSync.pullFromCloud().catch(() => {});
           this.setSession(true);

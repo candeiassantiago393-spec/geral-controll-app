@@ -46,12 +46,27 @@ const App = {
     this.bindGlobalEvents();
     AppUpdate.init();
     CloudSync.init();
+    this.offerClearDemoIfNeeded();
     this.renderWorkspaceBar();
     this.renderAreaFilters();
     this.bindAreaFiltersToggle();
     this.updateBadges();
     this.startTickers();
     this.navigate('dashboard');
+  },
+
+  offerClearDemoIfNeeded() {
+    if (!Store.state.settings?.fullDemoLoaded) return;
+    if (sessionStorage.getItem('candeias_demo_prompt_done')) return;
+    sessionStorage.setItem('candeias_demo_prompt_done', '1');
+    setTimeout(() => {
+      if (confirm('This app still has example data (Siemens tasks, demo clients, etc.).\n\nRemove ALL examples and start empty to personalize?')) {
+        Store.clearAllData();
+        this.renderWorkspaceBar();
+        this.renderAreaFilters();
+        this.refresh();
+      }
+    }, 600);
   },
 
   startTickers() {
@@ -316,11 +331,11 @@ const App = {
       overdue: ['Overdue', 'Past deadlines'],
       pinned: ['Pinned', 'Important items'],
       blocked: ['Blocked', 'Waiting'],
-      projects: ['Projects', 'Siemens · candeias.dev'],
+      projects: ['Projects', 'Clients & delivery'],
       kanban: ['Kanban', 'Dev pipeline'],
       clients: ['Clients', 'candeias.dev — contacts & projects'],
       vault: ['Vault', 'Emails & passwords'],
-      contacts: ['Contacts', 'Suppliers & Siemens'],
+      contacts: ['Contacts', 'Groups & people'],
       emails: ['Emails', 'Work · School · Personal · Gmail'],
       links: ['Links', 'Bookmarks'],
       subscriptions: ['Subscriptions', 'Renewals'],
@@ -912,10 +927,29 @@ const App = {
         inp.click();
         break;
       }
+      case 'load-demo':
+        if (confirm('Load demo examples? This replaces ALL current data.')) {
+          Store.loadDemo();
+          this.renderWorkspaceBar();
+          this.renderAreaFilters();
+          this.refresh();
+        }
+        break;
+      case 'clear-all-data':
+        if (confirm('Delete ALL tasks, projects, clients, vault entries and start empty?')) {
+          Store.clearAllData();
+          this.renderWorkspaceBar();
+          this.renderAreaFilters();
+          this.refresh();
+          alert('App cleared — ready to personalize!');
+        }
+        break;
       case 'reset-demo':
         if (confirm('Load all demo examples? This replaces current data.')) {
-          Store.reset();
-          this.init();
+          Store.loadDemo();
+          this.renderWorkspaceBar();
+          this.renderAreaFilters();
+          this.refresh();
         }
         break;
       case 'focus-project': Store.state.settings.focusProjectId = id; Store.save(); this.refresh(); break;
@@ -1224,10 +1258,14 @@ const App = {
       }
       case 'cloud-sync-now':
         try {
-          await CloudSync.ensureReady();
-          if (!CloudSync.isSignedIn()) { alert('Sign in with cloud account first (logout → login).'); break; }
-          await CloudSync.pullFromCloud();
-          await CloudSync.pushToCloud();
+          if (!CloudSync.isSignedIn()) { alert('Sign in first (logout → login).'); break; }
+          if (CloudSync.isRenderMode()) {
+            await CloudSync.syncNow();
+          } else {
+            await CloudSync.ensureReady();
+            await CloudSync.pullFromCloud();
+            await CloudSync.pushToCloud();
+          }
           alert('Sync complete!');
           this.render();
         } catch (e) {

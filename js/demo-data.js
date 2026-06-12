@@ -227,6 +227,61 @@ function buildDemoData() {
 }
 
 function defaultState() {
+  return {
+    version: 3,
+    cloudUpdatedAt: null,
+    areas: structuredClone(DEFAULT_AREAS),
+    clients: [],
+    projects: [],
+    subscriptions: [],
+    items: [],
+    vaultEntries: [],
+    vaultUnlocked: false,
+    settings: {
+      theme: 'dark',
+      fullDemoLoaded: false,
+      lastQuickCapture: { areaId: 'area-work', projectId: null, subContextId: null },
+      focusProjectId: null,
+      vaultAutoLockMinutes: 5,
+      recentItems: [],
+      savedSearches: [],
+      inboxStreak: 0,
+      lastWeeklyReview: null,
+      dashboardWidgets: ['banners', 'stats', 'pinned', 'recent', 'dev', 'overdue', 'review'],
+      fincontrolUrl: FINCONTROL_DEFAULT_URL,
+      schoolSchedule: SchoolSchedule.defaultSchedule(),
+      accessibility: { ...DEFAULT_ACCESSIBILITY },
+      openaiApiKey: '',
+      openaiModel: 'gpt-4o-mini',
+      useAiParser: true,
+      pomodoro: { running: false, phase: 'work', endsAt: null, sessions: 0 },
+      activeTimer: null,
+      contactGroups: defaultContactGroups(),
+      vaultFolders: defaultVaultFolders(),
+      quickTags: [...QUICK_TAGS],
+      kanbanColumns: defaultKanbanColumns(),
+      pipelineStages: defaultPipelineStages(),
+      workStatuses: defaultWorkStatuses(),
+      clientStatuses: defaultClientStatuses(),
+      priorities: defaultPriorities(),
+      paymentStatuses: defaultPaymentStatuses(),
+      workspaces: defaultWorkspaces(),
+      linkCategories: defaultLinkCategories(),
+      subscriptionCategories: defaultSubscriptionCategories(),
+      emailAccounts: defaultEmailAccounts(),
+      googleClientId: '',
+      firebaseConfig: null,
+      cloudEmail: '',
+      lastCloudSync: null,
+      disciplines: defaultDisciplines(),
+      customTemplates: [],
+      areaFiltersCollapsed: false,
+    },
+    grades: [],
+  };
+}
+
+function demoState() {
   const demo = buildDemoData();
   return {
     version: 3,

@@ -85,7 +85,7 @@ const AppViews = {
     if (show('banners')) {
       html += `${stats.overdue > 0 ? `<div class="overdue-banner">⚠ ${stats.overdue} overdue task(s) · <a href="#" data-action="nav" data-view="overdue">View all</a></div>` : ''}
       ${stats.inbox > 0 ? `<div class="info-banner">📥 ${stats.inbox} no Inbox · <a href="#" data-action="nav" data-view="inbox">Classify</a></div>` : ''}
-      <div class="info-banner" style="opacity:0.85">💡 Sample data loaded — explore all sections. Demo vault: fictional passwords.</div>`;
+      ${Store.state.settings.fullDemoLoaded ? `<div class="info-banner" style="opacity:0.85">💡 Demo data loaded · <a href="#" data-action="clear-all-data">Clear and start fresh</a></div>` : ''}`;
     }
     if (show('stats')) {
       html += `<div class="stats-grid">
@@ -118,7 +118,7 @@ const AppViews = {
         <p class="muted">${review.done.length} completed · ${review.open.length} open · ${review.inbox.length} inbox</p>`;
     }
     html += `</div></div>
-      <footer class="app-footer"><a href="https://candeias.dev" target="_blank" rel="noopener">candeias.dev</a> · Candeias v3.0 · Sample data</footer>`;
+      <footer class="app-footer"><a href="https://candeias.dev" target="_blank" rel="noopener">candeias.dev</a> · Candeias v${APP_VERSION}</footer>`;
     return html;
   },
 
@@ -434,7 +434,7 @@ const AppViews = {
         }).join('')}
         <button class="btn btn-sm btn-primary mt" data-action="add-vault-folder">+ New vault folder</button>`;
     } else if (tab === 'contacts') {
-      body = `<p class="muted mb">Groups to filter contacts: Siemens, University, Clients…</p>${this.renderContactGroupsList()}`;
+      body = `<p class="muted mb">Groups to filter contacts: Work, University, Clients…</p>${this.renderContactGroupsList()}`;
     } else if (tab === 'emails') {
       body = `<p class="muted mb">Email accounts for Work, School, Personal — used in the Emails section and Gmail links.</p>${this.renderEmailAccountsList()}`;
     } else if (tab === 'tags') {
@@ -1077,7 +1077,7 @@ const AppViews = {
       </div>`).join('')}
       <div class="settings-box mt"><p class="muted">Pipeline: ${Store.getPipelineStages().join(' → ')} · <a href="#" data-action="nav" data-view="personalization">Customize</a></p>
       <div class="btn-row mt"><button class="btn btn-sm" data-action="export-backup">Export backup</button>
-        <button class="btn btn-sm btn-ghost" data-action="reset-demo">↺ Load full examples</button></div></div>`;
+        <button class="btn btn-sm btn-ghost" data-action="load-demo">↺ Load demo examples</button></div></div>`;
   },
 
   renderSettings() {
@@ -1121,7 +1121,12 @@ const AppViews = {
           <button class="btn btn-sm" data-action="import-backup">⬆ Import backup</button>
         </div>
         <p class="muted sm mt">O ficheiro JSON fica só no teu PC — não vai para o GitHub.</p></div>
-      <div class="settings-box mb"><h3>Cloud sync (PC + phone)</h3>
+      ${CloudSync.isRenderMode?.() ? `<div class="settings-box mb"><h3>Cloud sync (Render)</h3>
+        <p class="muted mb sm">Password-protected · same data on PC and phone. Data stored on Render server (not GitHub).</p>
+        <p class="muted mt sm">${CloudSync.statusText()}</p>
+        <div class="btn-row mt">
+          <button class="btn btn-sm btn-primary" data-action="cloud-sync-now">↻ Sync now</button>
+        </div></div>` : `<div class="settings-box mb"><h3>Cloud sync (PC + phone)</h3>
         <p class="muted mb sm">One account, same tasks everywhere. Uses free <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase</a> (Auth + Firestore).</p>
         <p class="muted mb sm"><strong>Setup once:</strong> Firebase → Create project → Authentication (Email) → Firestore → paste config below.</p>
         <textarea class="form-control" id="firebase-config-json" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","appId":"..."}'>${Utils.esc(s.firebaseConfig ? JSON.stringify(s.firebaseConfig, null, 2) : '')}</textarea>
@@ -1129,7 +1134,7 @@ const AppViews = {
         <p class="muted mt sm">${typeof CloudSync !== 'undefined' ? CloudSync.statusText() : ''}${s.cloudEmail ? ` · ${Utils.esc(s.cloudEmail)}` : ''}</p>
         <div class="btn-row mt">
           <button class="btn btn-sm btn-primary" data-action="cloud-sync-now">↻ Sync now</button>
-        </div></div>
+        </div></div>`}
       <div class="settings-box mb"><h3>App update</h3>
         <p class="muted mb">Version <strong>${APP_VERSION}</strong> · ${typeof AppUpdate !== 'undefined' ? AppUpdate.statusLabel() : ''}</p>
         <div class="btn-row">
@@ -1138,11 +1143,16 @@ const AppViews = {
         </div>
         <p class="muted sm mt">Use after a new GitHub deploy — no need to reinstall the PWA.</p></div>
       <div class="settings-box mb"><h3>Account</h3>
-        <p class="muted mb">${CloudSync.isConfigured() ? 'Cloud login syncs across devices. Face ID works on this device.' : 'Local login on this device only — enable cloud sync above.'}</p>
+        <p class="muted mb">${CloudSync.isRenderMode?.() ? 'Render password login · auto-sync every 30s. Face ID unlocks on this device.' : CloudSync.isConfigured() ? 'Cloud login syncs across devices. Face ID works on this device.' : 'Local login on this device only — enable cloud sync above.'}</p>
         <button class="btn btn-sm btn-ghost danger-left" data-action="logout">Sign out</button></div>
+      <div class="settings-box mb"><h3>Data</h3>
+        <p class="muted mb sm">Start empty or remove example data still on this device.</p>
+        <div class="btn-row">
+          <button class="btn btn-sm btn-primary" data-action="clear-all-data">🗑 Clear all — start fresh</button>
+          <button class="btn btn-sm btn-ghost" data-action="load-demo">↺ Load demo examples</button>
+        </div></div>
       <div class="settings-box about-box"><div class="brand-icon lg">C</div><h2>Candeias</h2><p class="green">candeias.dev</p>
       <p class="muted">Organize. Build. Live.</p><p>Version ${APP_VERSION}</p>
-      <button class="btn btn-sm mt" data-action="reset-demo">↺ Reload examples</button>
       <a href="https://candeias.dev" target="_blank" class="btn btn-sm mt">Visit site</a></div>`;
   },
 

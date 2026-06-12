@@ -3,7 +3,11 @@ Thumbs.db
 *.log
 .env
 .env.*
+__pycache__/
+*.pyc
 
 # Personal data — NEVER push to GitHub
 backups/*.json
 backups/*.json.enc
+data/cloud/*.json
+!data/cloud/.gitkeep

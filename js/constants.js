@@ -33,7 +33,7 @@ const WORKSPACES = {
 
 function defaultContactGroups() {
   return [
-    { id: 'cg-siemens', name: 'Siemens', icon: '⚡', color: '#00d26a' },
+    { id: 'cg-work', name: 'Work', icon: '⚡', color: '#00d26a' },
     { id: 'cg-faculdade', name: 'University', icon: '📚', color: '#10b981' },
     { id: 'cg-clientes', name: 'Clients', icon: '🤝', color: '#00ff88' },
     { id: 'cg-fornecedores', name: 'Suppliers', icon: '🏭', color: '#ffa502' },
@@ -43,7 +43,7 @@ function defaultContactGroups() {
 
 function defaultVaultFolders() {
   return [
-    { id: 'vf-siemens', name: 'Siemens', icon: '⚡', color: '#00d26a' },
+    { id: 'vf-work', name: 'Work', icon: '⚡', color: '#00d26a' },
     { id: 'vf-clientes', name: 'Clients', icon: '🤝', color: '#00ff88' },
     { id: 'vf-hosting', name: 'Hosting', icon: '🌐', color: '#34d399' },
     { id: 'vf-faculdade', name: 'University', icon: '📚', color: '#10b981' },
@@ -114,8 +114,8 @@ const QUICK_TAGS = [
 ];
 
 const DEFAULT_AREAS = [
-  { id: 'area-work', name: 'Siemens Work', icon: '⚡', color: '#00d26a', subContexts: [] },
-  { id: 'area-freelance', name: 'candeias.dev', icon: '💻', color: '#00ff88', subContexts: [] },
+  { id: 'area-work', name: 'Work', icon: '⚡', color: '#00d26a', subContexts: [] },
+  { id: 'area-freelance', name: 'Projects', icon: '💻', color: '#00ff88', subContexts: [] },
   {
     id: 'area-personal',
     name: 'Personal',

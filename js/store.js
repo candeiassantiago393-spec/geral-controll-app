@@ -131,7 +131,7 @@ function migrateProject(raw) {
 
 function migrateState(raw) {
   if (!raw) return defaultState();
-  if (!raw.version || raw.version < 3 || !raw.settings?.fullDemoLoaded) {
+  if (!raw.version || raw.version < 3) {
     return defaultState();
   }
   const state = { ...defaultState(), ...raw, version: 3 };
@@ -140,8 +140,8 @@ function migrateState(raw) {
   state.clients = (raw.clients || []).map(migrateClient);
   state.projects = (raw.projects || []).map(migrateProject);
   state.items = (raw.items || []).map(migrateItem);
-  state.subscriptions = raw.subscriptions?.length ? raw.subscriptions : defaultState().subscriptions;
-  state.vaultEntries = raw.vaultEntries?.length ? raw.vaultEntries : defaultState().vaultEntries;
+  state.subscriptions = raw.subscriptions || [];
+  state.vaultEntries = raw.vaultEntries || [];
   state.settings = {
     ...defaultState().settings,
     ...(raw.settings || {}),
@@ -164,10 +164,10 @@ function migrateState(raw) {
     customTemplates: raw.settings?.customTemplates || [],
     dashboardWidgets: raw.settings?.dashboardWidgets?.length ? raw.settings.dashboardWidgets : defaultState().settings.dashboardWidgets,
     areaFiltersCollapsed: raw.settings?.areaFiltersCollapsed ?? false,
+    fullDemoLoaded: !!raw.settings?.fullDemoLoaded,
   };
   state.vaultUnlocked = false;
-  if (!state.clients.length) state.clients = defaultState().clients;
-  if (!state.grades?.length) state.grades = defaultState().grades || [];
+  state.grades = raw.grades || [];
   return state;
 }
 
@@ -209,6 +209,15 @@ const Store = {
   reset() {
     this.state = defaultState();
     this.save();
+  },
+
+  loadDemo() {
+    this.state = demoState();
+    this.save();
+  },
+
+  clearAllData() {
+    this.reset();
   },
 
   importBackup(data) {
