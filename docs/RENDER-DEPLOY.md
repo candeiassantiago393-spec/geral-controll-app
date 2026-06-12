@@ -99,3 +99,6 @@ If you deploy on **GitHub Pages** or static hosting without the Python server, y
 | Slow first load | Free plan sleeps — wait ~30s |
 | Data missing | Sign in with same password; tap **Sync now** in Settings |
 | Old GitHub Pages URL | Use the Render URL instead |
+| Blueprint error "disks not supported" | Free plan — use `render.yaml` without disk (already fixed in repo) |
+
+**Free plan note:** sync data lives on the server while it runs. After a **redeploy** or long sleep, cloud data may reset — keep **Export backup** in Settings as safety.
