@@ -950,7 +950,7 @@ const AppViews = {
         <div class="btn-row">
           <button class="btn btn-sm ${App.projectFilter==='active'?'btn-primary':''}" data-action="proj-filter" data-filter="active">Active</button>
           <button class="btn btn-sm ${App.projectFilter==='archived'?'btn-primary':''}" data-action="proj-filter" data-filter="archived">Archive</button>
-          <button class="btn btn-primary btn-sm" id="btn-add-project">+ Project</button>
+          <button class="btn btn-primary btn-sm" data-action="add-project">+ Project</button>
         </div></div>
       ${Object.entries(grouped).map(([areaId, projs]) => {
         const area = Store.getArea(areaId);

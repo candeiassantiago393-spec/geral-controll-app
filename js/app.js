@@ -957,6 +957,7 @@ const App = {
       case 'dup-project': Store.duplicateProject(id); alert('Project duplicated!'); this.refresh(); break;
       case 'archive-project': Store.archiveProject(id); this.projectDetailId = null; this.refresh(); break;
       case 'add-proj-item': this.openItemModal(null, null, ds.pid); break;
+      case 'add-project': this.openProjectModal(); break;
       case 'log-hours': { const h = parseFloat(prompt('Hours?')); if (h) { Store.logHours(id, h); this.refresh(); } } break;
       case 'add-version': { const v = prompt('Version (e.g. 1.1)?'); const n = prompt('Notes?'); if (v) { Store.addProjectVersion(id, v, n || ''); this.refresh(); } } break;
       case 'use-template': this.useTemplate(ds.template); break;

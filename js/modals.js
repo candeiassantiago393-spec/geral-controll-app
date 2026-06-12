@@ -401,8 +401,8 @@ const AppModals = {
         <div class="form-group"><label>Email</label><input class="form-control" name="clientEmail" id="proj-client-email"></div></div>
         <div class="form-row"><div class="form-group"><label>Phone</label><input class="form-control" name="clientPhone"></div>
         <div class="form-group"><label>Stack</label><input class="form-control" name="stack"></div></div>
-        <div class="form-row"><div class="form-group"><label>Pipeline</label><select class="form-control" name="pipeline"><option value="">—</option>${Store.getPipelineStages().map((s) => `<option ${project?.pipeline === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>Payment</label><select class="form-control" name="paymentStatus"><option value="">—</option>${Store.getPaymentStatuses().map((s) => `<option ${project?.paymentStatus === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
+        <div class="form-row"><div class="form-group"><label>Pipeline</label><select class="form-control" name="pipeline"><option value="">—</option>${Store.getPipelineStages().map((s) => `<option>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label>Payment</label><select class="form-control" name="paymentStatus"><option value="">—</option>${Store.getPaymentStatuses().map((s) => `<option>${s}</option>`).join('')}</select></div></div>
         <div class="form-row"><div class="form-group"><label>Estimated hours</label><input class="form-control" type="number" name="estimatedHours"></div>
         <div class="form-group"><label>URL</label><input class="form-control" name="url"></div></div>
         <div class="form-group"><label>Description</label><textarea class="form-control" name="description"></textarea></div>
