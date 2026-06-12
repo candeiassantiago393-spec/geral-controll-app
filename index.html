@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Candeias">
+  <title>Candeias — candeias.dev</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+  <div id="login-gate" class="login-gate"></div>
+  <div id="sidebar-backdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+  <div class="app-shell hidden" id="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <div class="brand-icon">C</div>
+          <div class="brand-text">
+            <h1>Candeias</h1>
+            <span>candeias.dev</span>
+          </div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-label">Main</div>
+          <button class="nav-item active" data-view="dashboard"><span class="icon">◉</span> Dashboard</button>
+          <button class="nav-item" data-view="inbox"><span class="icon">📥</span> Inbox <span class="nav-badge hidden" id="badge-inbox">0</span></button>
+          <button class="nav-item" data-view="today"><span class="icon">☀</span> Today</button>
+          <button class="nav-item" data-view="overdue"><span class="icon">⚠</span> Overdue <span class="nav-badge hidden" id="badge-overdue">0</span></button>
+          <button class="nav-item" data-view="calendar"><span class="icon">📅</span> Calendar</button>
+          <button class="nav-item" data-view="timeline"><span class="icon">▬</span> Timeline</button>
+          <button class="nav-item" data-view="tasks"><span class="icon">✓</span> Tasks</button>
+          <button class="nav-item" data-view="pinned"><span class="icon">📌</span> Pinned</button>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-label">Organization</div>
+          <button class="nav-item" data-view="projects"><span class="icon">📁</span> Projects</button>
+          <button class="nav-item" data-view="review"><span class="icon">📋</span> Review</button>
+          <button class="nav-item" data-view="blocked"><span class="icon">⏸</span> Blocked</button>
+          <button class="nav-item" data-view="archive"><span class="icon">🗄</span> Archive</button>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-label">candeias.dev</div>
+          <button class="nav-item" data-view="clients"><span class="icon">🤝</span> Clients</button>
+          <button class="nav-item" data-view="kanban"><span class="icon">▦</span> Kanban</button>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-label">Resources</div>
+          <button class="nav-item" data-view="vault"><span class="icon">🔐</span> Vault</button>
+          <button class="nav-item" data-view="contacts"><span class="icon">👤</span> Contacts</button>
+          <button class="nav-item" data-view="emails"><span class="icon">✉</span> Emails</button>
+          <button class="nav-item" data-view="links"><span class="icon">🔗</span> Links</button>
+          <button class="nav-item" data-view="subscriptions"><span class="icon">💳</span> Subscriptions</button>
+          <button class="nav-item" data-view="templates"><span class="icon">📋</span> Templates</button>
+          <button class="nav-item" data-view="tools"><span class="icon">⚡</span> Tools</button>
+          <button class="nav-item" data-view="stats"><span class="icon">📊</span> Statistics</button>
+        </div>
+        <div class="nav-section">
+          <div class="nav-section-label">System</div>
+          <button class="nav-item" data-view="areas"><span class="icon">⚙</span> Areas</button>
+          <button class="nav-item" data-view="personalization"><span class="icon">🎛</span> Personalization</button>
+          <button class="nav-item" data-view="accessibility"><span class="icon">♿</span> Accessibility</button>
+          <button class="nav-item" data-view="settings"><span class="icon">◈</span> Settings</button>
+        </div>
+      </nav>
+
+      <div class="sidebar-areas" id="sidebar-areas">
+        <button type="button" class="sidebar-section-toggle" id="area-filters-toggle" aria-expanded="true" aria-controls="area-filters">
+          <span class="sidebar-toggle-arrow" aria-hidden="true">▾</span>
+          <span class="nav-section-label">Filter by area</span>
+        </button>
+        <div id="area-filters" class="sidebar-section-body"></div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="btn-ai" id="btn-ai-capture">🤖 AI Assistant</button>
+        <button class="btn-quick" id="btn-quick-capture">+ Quick Note</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="btn btn-icon btn-ghost hidden" id="btn-menu" aria-label="Menu">☰</button>
+        <div>
+          <div class="topbar-title" id="view-title">Dashboard</div>
+          <div class="topbar-subtitle" id="view-subtitle">candeias.dev control panel</div>
+        </div>
+        <div class="topbar-spacer"></div>
+        <div class="search-box" id="search-trigger">
+          <span>🔍</span>
+          <input type="text" placeholder="Search..." readonly>
+          <kbd>Ctrl K</kbd>
+        </div>
+        <button class="btn btn-primary" id="btn-add">+ New</button>
+      </header>
+
+      <div class="workspace-bar" id="workspace-bar"></div>
+      <div class="filter-bar hidden" id="filter-bar"></div>
+      <div class="keyboard-hints hidden" id="keyboard-hints">
+        <kbd>Ctrl K</kbd> Search · <kbd>Esc</kbd> Close modal · Calendar: filters in the top bar
+      </div>
+      <div class="content" id="content"></div>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/constants.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/school-schedule.js"></script>
+  <script src="js/tools.js"></script>
+  <script src="js/ai-assistant.js"></script>
+  <script src="js/demo-data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/vault.js"></script>
+  <script src="js/gmail.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/modals.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

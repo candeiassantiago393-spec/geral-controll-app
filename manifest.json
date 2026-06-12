@@ -1,0 +1,19 @@
+{
+  "name": "Candeias Control",
+  "short_name": "Candeias",
+  "description": "Personal notes, tasks, projects and vault — productivity app",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#00d26a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

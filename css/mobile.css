@@ -1,0 +1,310 @@
+/* Mobile & touch optimizations */
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 90;
+  backdrop-filter: blur(2px);
+}
+.sidebar-backdrop.open { display: block; }
+
+@media (max-width: 900px) {
+  html, body {
+    overflow: hidden;
+    height: 100%;
+    height: 100dvh;
+  }
+
+  .app-shell {
+    height: 100dvh;
+  }
+
+  .main {
+    min-width: 0;
+  }
+
+  .topbar {
+    padding: 10px 12px;
+    gap: 8px;
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+
+  .topbar-title {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .topbar-subtitle {
+    display: none;
+  }
+
+  #btn-menu {
+    display: flex !important;
+    flex-shrink: 0;
+  }
+
+  .search-box {
+    min-width: 0;
+    flex: 1;
+    padding: 8px 10px;
+  }
+
+  .search-box kbd { display: none; }
+
+  #btn-add {
+    padding: 8px 12px;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .workspace-bar,
+  .filter-bar {
+    padding: 8px 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .workspace-bar::-webkit-scrollbar,
+  .filter-bar::-webkit-scrollbar { display: none; }
+
+  .workspace-chip,
+  .filter-chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .workspace-timer {
+    margin-left: 0;
+    flex-shrink: 0;
+  }
+
+  .content {
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    overflow-x: hidden;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-value { font-size: 20px; }
+
+  .dash-grid,
+  .tools-grid,
+  .email-accounts-grid,
+  .card-grid,
+  .a11y-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kanban-board {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .kanban-col {
+    min-width: 260px;
+    flex-shrink: 0;
+  }
+
+  .week-grid,
+  .timeline-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .week-col,
+  .timeline-col {
+    min-width: 140px;
+    flex-shrink: 0;
+  }
+
+  .timetable-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .timetable-col {
+    min-width: 160px;
+    flex-shrink: 0;
+  }
+
+  .cal-grid {
+    font-size: 11px;
+  }
+
+  .cal-day {
+    min-height: 44px;
+    padding: 4px;
+  }
+
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal,
+  .modal-lg,
+  .modal-wide {
+    max-width: 100%;
+    width: 100%;
+    max-height: 92dvh;
+    border-radius: var(--radius) var(--radius) 0 0;
+    margin: 0;
+  }
+
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .modal-footer .btn { flex: 1; min-width: 120px; }
+
+  .item-actions {
+    opacity: 1;
+    flex-wrap: wrap;
+  }
+
+  .item-card,
+  .contact-card,
+  .client-card {
+    padding: 14px;
+  }
+
+  .task-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .section-header .btn-row {
+    width: 100%;
+  }
+
+  .category-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .category-row .btn-row {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .contact-search {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+
+  .filter-date-wrap {
+    flex-shrink: 0;
+  }
+
+  .filter-date-input {
+    font-size: 13px;
+  }
+
+  .personalization-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .add-menu-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .project-tabs .tab {
+    flex-shrink: 0;
+  }
+
+  .client-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    width: min(280px, 88vw);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .sidebar-nav {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-item {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .login-gate {
+    padding: 16px;
+    padding-top: max(24px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+  }
+
+  .login-card {
+    padding: 24px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .btn-row .btn-sm {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .pomodoro-time {
+    font-size: 36px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .item-actions { opacity: 1; }
+  .nav-item,
+  .filter-chip,
+  .workspace-chip,
+  .btn {
+    min-height: 40px;
+  }
+}

@@ -1,0 +1,1248 @@
+const App = {
+  currentView: 'dashboard',
+  filters: { areaId: null, period: 'all', calMode: 'both', projectId: null, subContextId: null, tag: null },
+  calendarDate: new Date(),
+  selectedCalDay: null,
+  calView: 'month',
+  projectDetailId: null,
+  projectTab: 'overview',
+  projectFilter: 'active',
+  taskFilter: 'all',
+  clientDetailId: null,
+  clientTab: 'overview',
+  clientFilter: 'all',
+  clientSearch: '',
+  searchQuery: '',
+  searchType: '',
+  vaultFolder: 'all',
+  inboxFilters: {
+    type: 'all',
+    priority: 'all',
+    tag: null,
+    timeRange: 'all',
+    pickDate: '',
+    pickMonth: '',
+    pickYear: '',
+  },
+  archiveFilters: {
+    timeRange: 'all',
+    pickDate: '',
+    pickMonth: '',
+    pickYear: '',
+  },
+  workspace: null,
+  toolsTab: 'calc',
+  contactFilter: 'all',
+  contactSearch: '',
+  emailFilter: 'all',
+  personalizationTab: 'vault',
+  areaFiltersCollapsed: false,
+  _tickInterval: null,
+
+  init() {
+    this.applyTheme(Store.state.settings.theme || 'dark');
+    this.applyAccessibility();
+    Object.assign(this, AppViews, AppModals);
+    this.bindGlobalEvents();
+    this.renderWorkspaceBar();
+    this.renderAreaFilters();
+    this.bindAreaFiltersToggle();
+    this.updateBadges();
+    this.startTickers();
+    this.navigate('dashboard');
+  },
+
+  startTickers() {
+    if (this._tickInterval) clearInterval(this._tickInterval);
+    this._tickInterval = setInterval(() => {
+      Pomodoro.tick();
+      if (Store.state.settings.activeTimer || Pomodoro.state().running) {
+        if (['tasks', 'today', 'tools'].includes(this.currentView)) this.render();
+        this.renderWorkspaceBar();
+      }
+    }, 1000);
+  },
+
+  getActiveAreaIds() {
+    if (this.filters.areaId) return [this.filters.areaId];
+    if (this.workspace) {
+      const ws = Store.getWorkspaces()[this.workspace];
+      if (ws?.areaIds?.length) return ws.areaIds;
+    }
+    return null;
+  },
+
+  itemMatchesScope(item, { includeInbox = false } = {}) {
+    const ids = this.getActiveAreaIds();
+    if (!ids) return true;
+    if (item.inbox && !item.areaId && !item.projectId) {
+      return includeInbox || this.currentView === 'inbox';
+    }
+    let areaId = item.areaId;
+    if (!areaId && item.projectId) {
+      areaId = Store.getProject(item.projectId)?.areaId || null;
+    }
+    return !!(areaId && ids.includes(areaId));
+  },
+
+  filterItems(items, opts = {}) {
+    if (!this.getActiveAreaIds()) return items;
+    return items.filter((i) => this.itemMatchesScope(i, opts));
+  },
+
+  filterProjects(projects) {
+    const ids = this.getActiveAreaIds();
+    if (!ids) return projects;
+    return projects.filter((p) => ids.includes(p.areaId));
+  },
+
+  getFilteredItems(filter = {}, opts = {}) {
+    return this.filterItems(Store.getItems(filter), opts);
+  },
+
+  getFilteredStats() {
+    const items = this.filterItems(Store.state.items.filter((i) => !i.archived));
+    const tasks = items.filter((i) => i.type === 'task');
+    const weekTasks = this.filterItems(Store.getItems({ type: 'task', period: 'week' }));
+    const projects = this.filterProjects(Store.getActiveProjects());
+    return {
+      inbox: items.filter((i) => i.inbox).length,
+      tasksOpen: tasks.filter((t) => !t.completed).length,
+      tasksDone: tasks.filter((t) => t.completed).length,
+      tasksWeekDone: weekTasks.filter((t) => t.completed).length,
+      eventsToday: this.filterItems(Store.getItems({ period: 'day', types: ['event', 'reminder'] })).length,
+      projects: projects.length,
+      overdue: tasks.filter((t) => Utils.isOverdue(t)).length,
+      blocked: this.filterItems(Store.getItems({ blocked: true })).length,
+      pinned: this.filterItems(Store.getItems({ pinned: true })).length,
+      contacts: this.filterItems(Store.getItems({ type: 'contact' })).length,
+      links: this.filterItems(Store.getItems({ type: 'link' })).length,
+      hoursLogged: projects.reduce((s, p) => s + (p.loggedHours || 0), 0),
+      subscriptions: Store.state.subscriptions.length,
+      clients: Store.getClients().length,
+      clientsActive: Store.getClients({ status: 'Ativo' }).length,
+      leads: Store.getClients({ status: 'Lead' }).length,
+    };
+  },
+
+  getFilteredWeeklyReview() {
+    const r = Store.getWeeklyReview();
+    return {
+      done: this.filterItems(r.done),
+      open: this.filterItems(r.open),
+      inbox: this.filterItems(r.inbox, { includeInbox: true }),
+      overdue: this.filterItems(r.overdue),
+      blocked: this.filterItems(r.blocked),
+      weekItems: this.filterItems(r.weekItems),
+    };
+  },
+
+  scopeFilterLabel() {
+    if (this.filters.areaId) {
+      const area = Store.getArea(this.filters.areaId);
+      return area ? `${area.icon} ${area.name}` : null;
+    }
+    if (this.workspace) {
+      const ws = Store.getWorkspaces()[this.workspace];
+      return ws ? `${ws.icon} ${ws.label}` : null;
+    }
+    return null;
+  },
+
+  renderScopeBanner() {
+    const label = this.scopeFilterLabel();
+    if (!label) return '';
+    return `<div class="info-banner">Showing only: <strong>${Utils.esc(label)}</strong></div>`;
+  },
+
+  /** @deprecated use filterItems */
+  filterByWorkspace(items) {
+    return this.filterItems(items);
+  },
+
+  renderWorkspaceBar() {
+    const bar = document.getElementById('workspace-bar');
+    if (!bar) return;
+    const workspaces = Store.getWorkspaces();
+    const pom = Pomodoro.state();
+    const timer = Store.state.settings.activeTimer;
+    let extra = '';
+    if (timer) {
+      const sec = Store.getTimerElapsed();
+      extra = `<span class="workspace-timer">⏱ ${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}</span>`;
+    } else if (pom.running) {
+      extra = `<span class="workspace-timer">🍅 ${Pomodoro.fmt(Pomodoro.remainingSec())}</span>`;
+    }
+    bar.innerHTML = `
+      <button class="workspace-chip ${!this.workspace ? 'active' : ''}" data-workspace="">All</button>
+      ${Object.entries(workspaces).map(([k, w]) => `<button class="workspace-chip ${this.workspace === k ? 'active' : ''}" data-workspace="${k}">${w.icon} ${w.label}</button>`).join('')}
+      ${extra}`;
+    bar.querySelectorAll('[data-workspace]').forEach((el) => {
+      el.addEventListener('click', () => {
+        this.workspace = el.dataset.workspace || null;
+        if (this.workspace && this.filters.areaId) {
+          const ids = Store.getWorkspaces()[this.workspace]?.areaIds || [];
+          if (!ids.includes(this.filters.areaId)) this.filters.areaId = null;
+        }
+        this.renderAreaFilters();
+        this.renderWorkspaceBar();
+        this.refresh();
+      });
+    });
+  },
+
+  applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    Store.state.settings.theme = theme;
+    Store.save();
+  },
+
+  applyAccessibility() {
+    const a11y = { ...DEFAULT_ACCESSIBILITY, ...(Store.state.settings.accessibility || {}) };
+    Store.state.settings.accessibility = a11y;
+    const root = document.documentElement;
+    Object.keys(DEFAULT_ACCESSIBILITY).forEach((key) => {
+      root.setAttribute(`data-a11y-${key}`, a11y[key] ? '1' : '0');
+    });
+    const hints = document.getElementById('keyboard-hints');
+    if (hints) hints.classList.toggle('hidden', !a11y.keyboardHints);
+  },
+
+  getCalItemsForDate(dateStr) {
+    const schedule = Store.state.settings.schoolSchedule;
+    const schoolItems = schedule?.enabled ? SchoolSchedule.getForDate(dateStr, schedule) : [];
+    let items = Store.getItems({ date: dateStr });
+    const mode = this.filters.calMode;
+    if (mode === 'school') return schoolItems;
+    if (mode === 'events') return items.filter((i) => ['event', 'reminder'].includes(i.type));
+    if (mode === 'tasks') return items.filter((i) => i.type === 'task');
+    if (schedule?.enabled && schedule.showInCalendar !== false) items = [...items, ...schoolItems];
+    return this.filterByWorkspace(items);
+  },
+
+  refresh() {
+    this.render();
+    this.renderAreaFilters();
+    this.renderWorkspaceBar();
+    this.updateBadges();
+    if (['tasks', 'calendar', 'timeline', 'inbox', 'contacts', 'archive'].includes(this.currentView)) this.renderFilterBar();
+  },
+
+  bindGlobalEvents() {
+    document.querySelectorAll('.nav-item[data-view]').forEach((el) => {
+      el.addEventListener('click', () => { this.projectDetailId = null; this.navigate(el.dataset.view); });
+    });
+    document.getElementById('btn-quick-capture').addEventListener('click', () => this.openQuickCapture());
+    document.getElementById('btn-ai-capture')?.addEventListener('click', () => this.openAiAssistant());
+    document.getElementById('btn-add').addEventListener('click', () => this.openAddMenu());
+    document.getElementById('search-trigger').addEventListener('click', () => this.openCommandPalette());
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); this.openCommandPalette(); }
+      if (e.key === 'Escape') this.closeModal();
+    });
+    const menuBtn = document.getElementById('btn-menu');
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const closeSidebar = () => {
+      sidebar?.classList.remove('open');
+      backdrop?.classList.remove('open');
+    };
+    if (window.innerWidth <= 900) menuBtn?.classList.remove('hidden');
+    menuBtn?.addEventListener('click', () => {
+      const open = sidebar?.classList.toggle('open');
+      backdrop?.classList.toggle('open', !!open);
+    });
+    backdrop?.addEventListener('click', closeSidebar);
+    this._closeSidebar = closeSidebar;
+    this.bindModalRootEvents();
+  },
+
+  bindModalRootEvents() {
+    const root = document.getElementById('modal-root');
+    if (!root || root.dataset.bound) return;
+    root.dataset.bound = '1';
+    root.addEventListener('click', (e) => {
+      const overlay = document.getElementById('modal-overlay');
+      if (overlay && e.target === overlay) {
+        this.closeModal();
+        return;
+      }
+      const el = e.target.closest('[data-action]');
+      if (!el || !root.contains(el)) return;
+      const action = el.dataset.action;
+      if (action === 'close-modal') {
+        e.preventDefault();
+        this.closeModal();
+        return;
+      }
+      if (action === 'add-pick') {
+        e.preventDefault();
+        this.closeModal();
+        this.handleAddPick(el.dataset);
+        return;
+      }
+      if (['extract-tasks', 'delete-item-modal', 'delete-client-modal'].includes(action)) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleAction(action, el.dataset);
+      }
+    });
+  },
+
+  navigate(view) {
+    this.currentView = view;
+    if (view !== 'clients') this.clientDetailId = null;
+    if (view !== 'projects') this.projectDetailId = null;
+    document.querySelectorAll('.nav-item[data-view]').forEach((el) => {
+      el.classList.toggle('active', el.dataset.view === view);
+    });
+    const titles = {
+      dashboard: ['Dashboard', 'candeias.dev panel'],
+      inbox: ['Inbox', 'To classify'],
+      today: ['Today', 'Daily agenda'],
+      calendar: ['Calendar', 'Month · Week · Agenda'],
+      timeline: ['Timeline', 'Tasks with duration'],
+      tasks: ['Tasks', 'Time filters'],
+      overdue: ['Overdue', 'Past deadlines'],
+      pinned: ['Pinned', 'Important items'],
+      blocked: ['Blocked', 'Waiting'],
+      projects: ['Projects', 'Siemens · candeias.dev'],
+      kanban: ['Kanban', 'Dev pipeline'],
+      clients: ['Clients', 'candeias.dev — contacts & projects'],
+      vault: ['Vault', 'Emails & passwords'],
+      contacts: ['Contacts', 'Suppliers & Siemens'],
+      emails: ['Emails', 'Work · School · Personal · Gmail'],
+      links: ['Links', 'Bookmarks'],
+      subscriptions: ['Subscriptions', 'Renewals'],
+      templates: ['Templates', 'Reusable models'],
+      tools: ['Tools', 'Calc · Pomodoro · Grades'],
+      review: ['Review', 'Weekly review'],
+      stats: ['Statistics', 'Metrics'],
+      archive: ['Archive', 'Closed items & projects'],
+      areas: ['Areas', 'Editable layers'],
+      settings: ['Settings', 'Theme · focus · about'],
+      personalization: ['Personalization', 'Vault · areas · kanban · pipeline · dashboard'],
+      accessibility: ['Accessibility', 'Toggle features'],
+      search: ['Search', 'Results'],
+    };
+    const [title, sub] = titles[view] || ['Candeias', ''];
+    document.getElementById('view-title').textContent = title;
+    document.getElementById('view-subtitle').textContent = sub;
+    const filterBar = document.getElementById('filter-bar');
+    if (['tasks', 'calendar', 'timeline', 'inbox', 'contacts', 'emails', 'archive'].includes(view)) {
+      filterBar.classList.remove('hidden');
+      this.renderFilterBar();
+    } else filterBar.classList.add('hidden');
+    this.render();
+    this.updateBadges();
+    this.renderWorkspaceBar();
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-backdrop')?.classList.remove('open');
+  },
+
+  filterInboxItems(items) {
+    const f = this.inboxFilters;
+    let result = items;
+    if (f.type !== 'all') result = result.filter((i) => i.type === f.type);
+    if (f.priority !== 'all') result = result.filter((i) => i.priority === f.priority);
+    if (f.tag) result = result.filter((i) => i.tags.includes(f.tag));
+    if (f.pickDate) {
+      result = result.filter((i) => i.createdAt.slice(0, 10) === f.pickDate);
+    } else if (f.pickMonth) {
+      result = result.filter((i) => i.createdAt.slice(0, 7) === f.pickMonth);
+    } else if (f.pickYear) {
+      result = result.filter((i) => i.createdAt.slice(0, 4) === String(f.pickYear));
+    } else if (f.timeRange !== 'all') {
+      const now = new Date();
+      result = result.filter((i) => {
+        const d = i.createdAt.slice(0, 10);
+        const date = new Date(d + 'T12:00:00');
+        if (f.timeRange === 'today') return d === Utils.todayStr();
+        if (f.timeRange === 'week') return Utils.isThisWeek(d);
+        if (f.timeRange === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+        if (f.timeRange === 'year') return date.getFullYear() === now.getFullYear();
+        return true;
+      });
+    }
+    return result;
+  },
+
+  archiveDateStr(entry) {
+    return (entry.updatedAt || entry.createdAt || '').slice(0, 10);
+  },
+
+  filterArchiveByDate(entries) {
+    const f = this.archiveFilters;
+    if (f.pickDate) {
+      return entries.filter((e) => this.archiveDateStr(e) === f.pickDate);
+    }
+    if (f.pickMonth) {
+      return entries.filter((e) => (e.updatedAt || e.createdAt || '').slice(0, 7) === f.pickMonth);
+    }
+    if (f.pickYear) {
+      return entries.filter((e) => (e.updatedAt || e.createdAt || '').slice(0, 4) === String(f.pickYear));
+    }
+    if (f.timeRange === 'all') return entries;
+    const now = new Date();
+    return entries.filter((e) => {
+      const d = this.archiveDateStr(e);
+      if (!d) return false;
+      const date = new Date(`${d}T12:00:00`);
+      if (f.timeRange === 'today') return d === Utils.todayStr();
+      if (f.timeRange === 'week') return Utils.isThisWeek(d);
+      if (f.timeRange === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      if (f.timeRange === 'year') return date.getFullYear() === now.getFullYear();
+      return true;
+    });
+  },
+
+  hasArchiveDateFilters() {
+    const f = this.archiveFilters;
+    return f.timeRange !== 'all' || !!f.pickDate || !!f.pickMonth || !!f.pickYear;
+  },
+
+  renderFilterBar() {
+    const bar = document.getElementById('filter-bar');
+    if (this.currentView === 'tasks') {
+      bar.innerHTML = `
+        ${['all', 'overdue', 'urgent', 'blocked'].map((f) => `<button class="filter-chip ${this.taskFilter === f ? 'active' : ''}" data-task-filter="${f}">${{ all: 'All', overdue: 'Overdue', urgent: 'Urgent', blocked: 'Blocked' }[f]}</button>`).join('')}
+        <span class="filter-sep"></span>
+        ${['all', 'day', 'week', 'month', 'year'].map((p) => `<button class="filter-chip ${this.filters.period === p ? 'active' : ''}" data-period="${p}">${{ all: 'All', day: 'Today', week: 'Week', month: 'Month', year: 'Year' }[p]}</button>`).join('')}
+        <span class="filter-sep"></span>
+        <button class="filter-chip ${!this.filters.tag ? 'active' : ''}" data-tag="">Tags</button>
+        ${Store.getAllTags().slice(0, 8).map((t) => `<button class="filter-chip ${this.filters.tag === t ? 'active' : ''}" data-tag="${Utils.esc(t)}">#${Utils.esc(t)}</button>`).join('')}`;
+    } else if (this.currentView === 'calendar') {
+      const finUrl = Store.state.settings.fincontrolUrl || FINCONTROL_DEFAULT_URL;
+      bar.innerHTML = `
+        ${['month', 'week', 'agenda'].map((v) => `<button class="filter-chip ${this.calView === v ? 'active' : ''}" data-calview="${v}">${{ month: 'Month', week: 'Week', agenda: 'Agenda' }[v]}</button>`).join('')}
+        <span class="filter-sep"></span>
+        ${['both', 'events', 'tasks', 'school'].map((m) => `<button class="filter-chip ${this.filters.calMode === m ? 'active' : ''}" data-calmode="${m}">${{ both: 'Both', events: 'Events', tasks: 'Tasks', school: '🏫 School' }[m]}</button>`).join('')}
+        <span class="filter-sep"></span>
+        <button class="filter-chip" data-action="edit-school-schedule" title="Edit weekly schedule">✏ Schedule</button>
+        <a class="filter-chip fincontrol-link" href="${Utils.esc(finUrl)}" target="_blank" rel="noopener" title="Open FinControl">💶 FinControl</a>`;
+    } else if (this.currentView === 'timeline') {
+      bar.innerHTML = `<span class="muted">Bars = estimated task duration</span>`;
+    } else if (this.currentView === 'inbox') {
+      const f = this.inboxFilters;
+      const inboxTags = [...new Set(Store.getItems({ inbox: true }).flatMap((i) => i.tags))].slice(0, 6);
+      bar.innerHTML = `
+        ${[
+          ['all', 'All'], ['note', 'Notes'], ['task', 'Tasks'], ['idea', 'Ideas'],
+          ['link', 'Links'], ['reminder', 'Reminders'],
+        ].map(([k, label]) => `<button class="filter-chip ${f.type === k ? 'active' : ''}" data-inbox-type="${k}">${label}</button>`).join('')}
+        <span class="filter-sep"></span>
+        ${[
+          ['all', 'Priority'], ['urgent', 'Urgent'], ['high', 'High'], ['normal', 'Normal'], ['low', 'Low'],
+        ].map(([k, label]) => `<button class="filter-chip ${f.priority === k ? 'active' : ''}" data-inbox-priority="${k}">${label}</button>`).join('')}
+        <span class="filter-sep"></span>
+        ${[
+          ['all', 'Any time'], ['today', 'Today'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year'],
+        ].map(([k, label]) => `<button class="filter-chip ${f.timeRange === k && !f.pickDate && !f.pickMonth && !f.pickYear ? 'active' : ''}" data-inbox-time="${k}">${label}</button>`).join('')}
+        <span class="filter-sep"></span>
+        <label class="filter-date-wrap" title="Pick day"><span class="muted sm">Day</span>
+          <input type="date" class="filter-date-input" id="inbox-pick-date" value="${f.pickDate}"></label>
+        <label class="filter-date-wrap" title="Pick month"><span class="muted sm">Month</span>
+          <input type="month" class="filter-date-input" id="inbox-pick-month" value="${f.pickMonth}"></label>
+        <label class="filter-date-wrap" title="Pick year"><span class="muted sm">Year</span>
+          <input type="number" class="filter-date-input year" id="inbox-pick-year" placeholder="2026" min="2020" max="2035" value="${f.pickYear || ''}"></label>
+        ${f.pickDate || f.pickMonth || f.pickYear ? `<button class="filter-chip" data-inbox-clear-time>✕ Clear date</button>` : ''}
+        ${inboxTags.length ? `<span class="filter-sep"></span>` : ''}
+        ${inboxTags.map((t) => `<button class="filter-chip ${f.tag === t ? 'active' : ''}" data-inbox-tag="${Utils.esc(t)}">#${Utils.esc(t)}</button>`).join('')}`;
+    } else if (this.currentView === 'contacts') {
+      const groups = Store.getContactGroups();
+      bar.innerHTML = `
+        <button class="filter-chip ${this.contactFilter === 'all' ? 'active' : ''}" data-contact-group="all">All</button>
+        ${groups.map((g) => `<button class="filter-chip ${this.contactFilter === g.id ? 'active' : ''}" data-contact-group="${g.id}" style="border-color:${this.contactFilter === g.id ? g.color : ''}">${g.icon} ${Utils.esc(g.name)}</button>`).join('')}
+        <span class="filter-sep"></span>
+        <input type="search" class="filter-date-input contact-search" id="contact-search" placeholder="Search name, email, company…" value="${Utils.esc(this.contactSearch)}">
+        <button class="filter-chip" data-action="manage-contact-groups">⚙ Groups</button>`;
+    } else if (this.currentView === 'emails') {
+      const accounts = Store.getEmailAccounts();
+      bar.innerHTML = `
+        <button class="filter-chip ${this.emailFilter === 'all' ? 'active' : ''}" data-email-filter="all">All</button>
+        ${accounts.map((a) => `<button class="filter-chip ${this.emailFilter === a.id ? 'active' : ''}" data-email-filter="${a.id}" style="border-color:${this.emailFilter === a.id ? a.color : ''}">${a.icon} ${Utils.esc(a.name)}${a.unreadCount > 0 ? ` (${a.unreadCount})` : ''}</button>`).join('')}
+        <span class="filter-sep"></span>
+        <button class="filter-chip" data-action="manage-email-accounts">⚙ Accounts</button>
+        <button class="filter-chip" data-action="refresh-all-gmail">↻ Refresh all</button>`;
+    } else if (this.currentView === 'archive') {
+      const f = this.archiveFilters;
+      bar.innerHTML = `
+        ${[
+          ['all', 'Any time'], ['today', 'Today'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year'],
+        ].map(([k, label]) => `<button class="filter-chip ${f.timeRange === k && !f.pickDate && !f.pickMonth && !f.pickYear ? 'active' : ''}" data-archive-time="${k}">${label}</button>`).join('')}
+        <span class="filter-sep"></span>
+        <label class="filter-date-wrap" title="Pick day"><span class="muted sm">Day</span>
+          <input type="date" class="filter-date-input" id="archive-pick-date" value="${f.pickDate}"></label>
+        <label class="filter-date-wrap" title="Pick month"><span class="muted sm">Month</span>
+          <input type="month" class="filter-date-input" id="archive-pick-month" value="${f.pickMonth}"></label>
+        <label class="filter-date-wrap" title="Pick year"><span class="muted sm">Year</span>
+          <input type="number" class="filter-date-input year" id="archive-pick-year" placeholder="2026" min="2020" max="2035" value="${f.pickYear || ''}"></label>
+        ${f.pickDate || f.pickMonth || f.pickYear ? `<button class="filter-chip" data-archive-clear-time>✕ Clear date</button>` : ''}
+        ${this.hasArchiveDateFilters() ? `<span class="filter-sep"></span><button class="filter-chip" data-action="clear-archive-filters">Clear filters</button>` : ''}`;
+    }
+    this.bindFilterBar(bar);
+  },
+
+  bindFilterBar(bar) {
+    bar.querySelectorAll('[data-period]').forEach((el) => el.addEventListener('click', () => { this.filters.period = el.dataset.period; this.taskFilter = 'all'; this.refresh(); }));
+    bar.querySelectorAll('[data-task-filter]').forEach((el) => el.addEventListener('click', () => { this.taskFilter = el.dataset.taskFilter; this.refresh(); }));
+    bar.querySelectorAll('[data-tag]').forEach((el) => el.addEventListener('click', () => { this.filters.tag = el.dataset.tag || null; this.refresh(); }));
+    bar.querySelectorAll('[data-calmode]').forEach((el) => el.addEventListener('click', () => { this.filters.calMode = el.dataset.calmode; this.refresh(); }));
+    bar.querySelectorAll('[data-calview]').forEach((el) => el.addEventListener('click', () => { this.calView = el.dataset.calview; this.refresh(); }));
+    bar.querySelectorAll('[data-action="edit-school-schedule"]').forEach((el) => el.addEventListener('click', () => this.openSchoolScheduleModal()));
+    bar.querySelectorAll('[data-inbox-type]').forEach((el) => el.addEventListener('click', () => {
+      this.inboxFilters.type = el.dataset.inboxType;
+      this.refresh();
+    }));
+    bar.querySelectorAll('[data-inbox-priority]').forEach((el) => el.addEventListener('click', () => {
+      this.inboxFilters.priority = el.dataset.inboxPriority;
+      this.refresh();
+    }));
+    bar.querySelectorAll('[data-inbox-time]').forEach((el) => el.addEventListener('click', () => {
+      this.inboxFilters.timeRange = el.dataset.inboxTime;
+      this.inboxFilters.pickDate = '';
+      this.inboxFilters.pickMonth = '';
+      this.inboxFilters.pickYear = '';
+      this.refresh();
+    }));
+    bar.querySelectorAll('[data-inbox-tag]').forEach((el) => el.addEventListener('click', () => {
+      const tag = el.dataset.inboxTag;
+      this.inboxFilters.tag = this.inboxFilters.tag === tag ? null : tag;
+      this.refresh();
+    }));
+    bar.querySelectorAll('[data-inbox-clear-time]').forEach((el) => el.addEventListener('click', () => {
+      this.inboxFilters.pickDate = '';
+      this.inboxFilters.pickMonth = '';
+      this.inboxFilters.pickYear = '';
+      this.inboxFilters.timeRange = 'all';
+      this.refresh();
+    }));
+    const pickDate = bar.querySelector('#inbox-pick-date');
+    const pickMonth = bar.querySelector('#inbox-pick-month');
+    const pickYear = bar.querySelector('#inbox-pick-year');
+    pickDate?.addEventListener('change', () => {
+      this.inboxFilters.pickDate = pickDate.value;
+      this.inboxFilters.pickMonth = '';
+      this.inboxFilters.pickYear = '';
+      this.inboxFilters.timeRange = 'all';
+      this.refresh();
+    });
+    pickMonth?.addEventListener('change', () => {
+      this.inboxFilters.pickMonth = pickMonth.value;
+      this.inboxFilters.pickDate = '';
+      this.inboxFilters.pickYear = '';
+      this.inboxFilters.timeRange = 'all';
+      this.refresh();
+    });
+    pickYear?.addEventListener('change', () => {
+      this.inboxFilters.pickYear = pickYear.value;
+      this.inboxFilters.pickDate = '';
+      this.inboxFilters.pickMonth = '';
+      this.inboxFilters.timeRange = 'all';
+      this.refresh();
+    });
+    bar.querySelectorAll('[data-archive-time]').forEach((el) => el.addEventListener('click', () => {
+      this.archiveFilters.timeRange = el.dataset.archiveTime;
+      this.archiveFilters.pickDate = '';
+      this.archiveFilters.pickMonth = '';
+      this.archiveFilters.pickYear = '';
+      this.refresh();
+    }));
+    bar.querySelectorAll('[data-archive-clear-time]').forEach((el) => el.addEventListener('click', () => {
+      this.archiveFilters.pickDate = '';
+      this.archiveFilters.pickMonth = '';
+      this.archiveFilters.pickYear = '';
+      this.archiveFilters.timeRange = 'all';
+      this.refresh();
+    }));
+    const archivePickDate = bar.querySelector('#archive-pick-date');
+    const archivePickMonth = bar.querySelector('#archive-pick-month');
+    const archivePickYear = bar.querySelector('#archive-pick-year');
+    archivePickDate?.addEventListener('change', () => {
+      this.archiveFilters.pickDate = archivePickDate.value;
+      this.archiveFilters.pickMonth = '';
+      this.archiveFilters.pickYear = '';
+      this.archiveFilters.timeRange = 'all';
+      this.refresh();
+    });
+    archivePickMonth?.addEventListener('change', () => {
+      this.archiveFilters.pickMonth = archivePickMonth.value;
+      this.archiveFilters.pickDate = '';
+      this.archiveFilters.pickYear = '';
+      this.archiveFilters.timeRange = 'all';
+      this.refresh();
+    });
+    archivePickYear?.addEventListener('change', () => {
+      this.archiveFilters.pickYear = archivePickYear.value;
+      this.archiveFilters.pickDate = '';
+      this.archiveFilters.pickMonth = '';
+      this.archiveFilters.timeRange = 'all';
+      this.refresh();
+    });
+    bar.querySelectorAll('[data-contact-group]').forEach((el) => {
+      el.addEventListener('click', () => {
+        this.contactFilter = el.dataset.contactGroup;
+        this.refresh();
+      });
+    });
+    bar.querySelectorAll('[data-email-filter]').forEach((el) => {
+      el.addEventListener('click', () => {
+        this.emailFilter = el.dataset.emailFilter;
+        this.refresh();
+      });
+    });
+    const contactSearch = bar.querySelector('#contact-search');
+    contactSearch?.addEventListener('input', () => {
+      this.contactSearch = contactSearch.value;
+      this.render();
+    });
+    bar.querySelectorAll('[data-action="manage-contact-groups"]').forEach((el) => {
+      el.addEventListener('click', () => {
+        this.personalizationTab = 'contacts';
+        this.navigate('personalization');
+      });
+    });
+  },
+
+  filterCalItems(items) {
+    return items;
+  },
+
+  promptAddSubscription() {
+    const name = prompt('Name?');
+    const amount = prompt('Amount €?');
+    const cats = Store.getSubscriptionCategories();
+    const catPick = prompt(`Category?\n${cats.map((c, i) => `${i + 1}. ${c}`).join('\n')}`, '1');
+    const catNum = parseInt(catPick, 10);
+    const category = (!Number.isNaN(catNum) && cats[catNum - 1]) ? cats[catNum - 1] : (catPick || cats[0] || 'Personal');
+    if (name) {
+      Store.addSubscription({
+        name,
+        amount: parseFloat(amount) || 0,
+        renewalDate: Utils.addDays(Utils.todayStr(), 30),
+        category,
+      });
+      this.refresh();
+    }
+  },
+
+  handleAddPick(ds) {
+    const presetDate = this.currentView === 'calendar' && this.selectedCalDay ? this.selectedCalDay : null;
+    const presetProjectId = this.projectDetailId || this.filters.projectId || null;
+    const presetClientId = this.clientDetailId || null;
+    switch (ds.kind) {
+      case 'quick':
+        this.openQuickCapture();
+        break;
+      case 'ultra':
+        this.openQuickCapture(null, true);
+        break;
+      case 'ai':
+        this.openAiAssistant();
+        break;
+      case 'item':
+        this.openItemModal(null, presetDate, presetProjectId, ds.type || null);
+        break;
+      case 'project':
+        this.openProjectModal(presetClientId);
+        break;
+      case 'client':
+        this.openClientModal();
+        break;
+      case 'area':
+        this.openAreaModal();
+        break;
+      case 'vault':
+        if (!Store.state.vaultUnlocked) this.navigate('vault');
+        this.openVaultModal();
+        break;
+      case 'subscription':
+        this.promptAddSubscription();
+        break;
+      default:
+        break;
+    }
+  },
+
+  renderAreaFilters() {
+    const container = document.getElementById('area-filters');
+    container.innerHTML = `
+      <button class="area-chip ${!this.filters.areaId ? 'active' : ''}" data-area=""><span class="area-dot" style="background:var(--green)"></span> All</button>
+      ${Store.state.areas.map((a) => `<button class="area-chip ${this.filters.areaId === a.id ? 'active' : ''}" data-area="${a.id}"><span class="area-dot" style="background:${a.color}"></span> ${a.icon} ${a.name}</button>`).join('')}`;
+    container.querySelectorAll('.area-chip').forEach((el) => {
+      el.addEventListener('click', () => {
+        this.filters.areaId = el.dataset.area || null;
+        if (this.filters.areaId && this.workspace) {
+          const ids = Store.getWorkspaces()[this.workspace]?.areaIds || [];
+          if (!ids.includes(this.filters.areaId)) this.workspace = null;
+        }
+        this.renderWorkspaceBar();
+        this.refresh();
+      });
+    });
+  },
+
+  bindAreaFiltersToggle() {
+    const toggle = document.getElementById('area-filters-toggle');
+    if (!toggle || toggle.dataset.bound) return;
+    toggle.dataset.bound = '1';
+    this.areaFiltersCollapsed = Store.state.settings.areaFiltersCollapsed ?? false;
+    this.applyAreaFiltersCollapsed();
+    toggle.addEventListener('click', () => {
+      this.areaFiltersCollapsed = !this.areaFiltersCollapsed;
+      Store.state.settings.areaFiltersCollapsed = this.areaFiltersCollapsed;
+      Store.save();
+      this.applyAreaFiltersCollapsed();
+    });
+  },
+
+  applyAreaFiltersCollapsed() {
+    const section = document.getElementById('sidebar-areas');
+    const toggle = document.getElementById('area-filters-toggle');
+    if (!section || !toggle) return;
+    section.classList.toggle('collapsed', this.areaFiltersCollapsed);
+    toggle.setAttribute('aria-expanded', String(!this.areaFiltersCollapsed));
+  },
+
+  updateBadges() {
+    const stats = Store.getStats();
+    const badge = document.getElementById('badge-inbox');
+    const overdueBadge = document.getElementById('badge-overdue');
+    if (stats.inbox > 0) { badge.textContent = stats.inbox; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
+    if (stats.overdue > 0) { overdueBadge.textContent = stats.overdue; overdueBadge.classList.remove('hidden'); } else overdueBadge.classList.add('hidden');
+  },
+
+  render() {
+    const renderers = {
+      dashboard: () => this.renderDashboard(),
+      inbox: () => this.renderInbox(),
+      today: () => this.renderToday(),
+      calendar: () => this.renderCalendar(),
+      timeline: () => this.renderTimeline(),
+      tasks: () => this.renderTasks(),
+      overdue: () => this.renderOverdue(),
+      pinned: () => this.renderPinned(),
+      blocked: () => this.renderBlocked(),
+      archive: () => this.renderArchive(),
+      review: () => this.renderReview(),
+      stats: () => this.renderStats(),
+      clients: () => this.renderClients(),
+      contacts: () => this.renderContacts(),
+      emails: () => this.renderEmails(),
+      links: () => this.renderLinks(),
+      subscriptions: () => this.renderSubscriptions(),
+      templates: () => this.renderTemplates(),
+      tools: () => this.renderTools(),
+      projects: () => this.renderProjects(),
+      kanban: () => this.renderKanban(),
+      vault: () => this.renderVault(),
+      areas: () => this.renderAreas(),
+      settings: () => this.renderSettings(),
+      personalization: () => this.renderPersonalization(),
+      accessibility: () => this.renderAccessibility(),
+      search: () => this.renderSearch(),
+    };
+    document.getElementById('content').innerHTML = renderers[this.currentView]?.() || '';
+    this.bindContentEvents();
+  },
+
+  bindContentEvents() {
+    document.querySelectorAll('[data-action]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleAction(el.dataset.action, el.dataset);
+      });
+    });
+    document.querySelectorAll('[data-cal-day]').forEach((el) => {
+      el.addEventListener('click', () => { this.selectedCalDay = el.dataset.calDay; this.render(); });
+    });
+    document.querySelectorAll('.tab[data-tab]').forEach((el) => {
+      el.addEventListener('click', () => { this.projectTab = el.dataset.tab; this.render(); });
+    });
+    document.querySelectorAll('[data-client-tab]').forEach((el) => {
+      el.addEventListener('click', () => { this.clientTab = el.dataset.clientTab; this.render(); });
+    });
+    document.querySelectorAll('[data-client-filter]').forEach((el) => {
+      el.addEventListener('click', () => { this.clientFilter = el.dataset.clientFilter; this.render(); });
+    });
+    document.querySelectorAll('[data-kanban-move]').forEach((el) => {
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); Store.updateItem(el.dataset.id, { kanbanStatus: el.dataset.kanbanMove }); this.refresh(); });
+    });
+    document.querySelectorAll('[data-vault-folder]').forEach((el) => {
+      el.addEventListener('click', () => { this.vaultFolder = el.dataset.vaultFolder; this.render(); });
+    });
+    document.querySelectorAll('[data-personal-tab]').forEach((el) => {
+      el.addEventListener('click', () => { this.personalizationTab = el.dataset.personalTab; this.render(); });
+    });
+    document.getElementById('new-quick-tag')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.querySelector('[data-action="add-quick-tag"]')?.click();
+    });
+    document.getElementById('cal-prev')?.addEventListener('click', () => {
+      if (this.currentView === 'calendar' && (this.filters.calMode === 'school' || this.calView === 'week')) {
+        this.calendarDate.setDate(this.calendarDate.getDate() - 7);
+      } else this.calendarDate.setMonth(this.calendarDate.getMonth() - 1);
+      this.render();
+    });
+    document.getElementById('cal-next')?.addEventListener('click', () => {
+      if (this.currentView === 'calendar' && (this.filters.calMode === 'school' || this.calView === 'week')) {
+        this.calendarDate.setDate(this.calendarDate.getDate() + 7);
+      } else this.calendarDate.setMonth(this.calendarDate.getMonth() + 1);
+      this.render();
+    });
+    document.getElementById('cal-today')?.addEventListener('click', () => { this.calendarDate = new Date(); this.selectedCalDay = Utils.todayStr(); this.render(); });
+    document.getElementById('tl-prev')?.addEventListener('click', () => { this.calendarDate.setDate(this.calendarDate.getDate() - 7); this.render(); });
+    document.getElementById('tl-next')?.addEventListener('click', () => { this.calendarDate.setDate(this.calendarDate.getDate() + 7); this.render(); });
+    document.getElementById('kanban-proj-filter')?.addEventListener('change', (e) => { this.filters.projectId = e.target.value || null; this.render(); });
+    document.getElementById('focus-select')?.addEventListener('change', (e) => { Store.state.settings.focusProjectId = e.target.value || null; Store.save(); });
+    document.getElementById('vault-unlock-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pw = document.getElementById('vault-password').value;
+      if (!Vault.isSetup()) await Vault.setupMasterPassword(pw);
+      else if (!(await Vault.unlock(pw))) { alert('Incorrect password'); return; }
+      this.render();
+    });
+    document.getElementById('vault-lock')?.addEventListener('click', () => { Vault.lock(); this.render(); });
+    document.getElementById('btn-add-vault')?.addEventListener('click', () => this.openVaultModal());
+    document.getElementById('btn-add-project')?.addEventListener('click', () => this.openProjectModal());
+    document.getElementById('btn-add-area')?.addEventListener('click', () => this.openAreaModal());
+    this.bindToolsCalc();
+    document.querySelectorAll('[data-tools-tab]').forEach((el) => {
+      el.addEventListener('click', () => { this.toolsTab = el.dataset.toolsTab; this.render(); });
+    });
+  },
+
+  bindToolsCalc() {
+    document.getElementById('calc-vdrop')?.addEventListener('click', () => {
+      const I = parseFloat(document.getElementById('calc-i').value);
+      const R = parseFloat(document.getElementById('calc-r').value);
+      const L = parseFloat(document.getElementById('calc-l').value);
+      const out = document.getElementById('calc-vdrop-out');
+      if (I && R && L) out.textContent = `ΔV = ${EngCalc.voltageDrop(I, R, L)} V`;
+    });
+    document.getElementById('calc-awg-btn')?.addEventListener('click', () => {
+      const awg = parseInt(document.getElementById('calc-awg').value, 10);
+      document.getElementById('calc-awg-out').textContent = `${awg} AWG ≈ ${EngCalc.awgToMm2(awg)} mm²`;
+    });
+    document.getElementById('calc-kw-btn')?.addEventListener('click', () => {
+      const kw = parseFloat(document.getElementById('calc-kw').value);
+      document.getElementById('calc-kw-out').textContent = kw ? `${kw} kW = ${EngCalc.kwToCv(kw)} cv` : '—';
+    });
+    document.getElementById('calc-cos')?.addEventListener('click', () => {
+      const kva = parseFloat(document.getElementById('calc-kva').value);
+      const kw = parseFloat(document.getElementById('calc-kw2').value);
+      document.getElementById('calc-cos-out').textContent = `cos φ = ${EngCalc.powerFactor(kva, kw)}`;
+    });
+  },
+
+  async handleAction(action, ds) {
+    const id = ds.id;
+    switch (action) {
+      case 'nav': this.navigate(ds.view); break;
+      case 'open-item':
+        if (String(id).startsWith('school-')) break;
+        this.openItemModal(id);
+        break;
+      case 'toggle-task': Store.toggleTask(id); this.refresh(); break;
+      case 'toggle-pin': Store.togglePin(id); this.refresh(); break;
+      case 'archive-item': Store.archiveItem(id); this.refresh(); break;
+      case 'snooze-item': Store.snoozeItem(id, 1); this.refresh(); break;
+      case 'delete-item': if (confirm('Delete?')) { Store.deleteItem(id); this.refresh(); } break;
+      case 'classify-inbox': this.openQuickCapture(id); break;
+      case 'clear-inbox-filters':
+        this.inboxFilters = { type: 'all', priority: 'all', tag: null, timeRange: 'all', pickDate: '', pickMonth: '', pickYear: '' };
+        this.refresh();
+        break;
+      case 'clear-archive-filters':
+        this.archiveFilters = { timeRange: 'all', pickDate: '', pickMonth: '', pickYear: '' };
+        this.refresh();
+        break;
+      case 'quick-ultra': this.openQuickCapture(null, true); break;
+      case 'open-project': this.projectDetailId = id; this.navigate('projects'); break;
+      case 'back-projects': this.projectDetailId = null; this.render(); break;
+      case 'extract-tasks': alert(`${Store.extractTasksFromNote(id).length} task(s) created.`); this.refresh(); break;
+      case 'delete-item-modal':
+        if (confirm('Delete?')) { Store.deleteItem(id); this.closeModal(); this.refresh(); }
+        break;
+      case 'delete-client-modal':
+        if (confirm('Delete client? Projects will be unlinked.')) {
+          Store.deleteClient(id);
+          this.closeModal();
+          this.clientDetailId = null;
+          this.refresh();
+        }
+        break;
+      case 'copy-password': await this.copyVaultPassword(id); break;
+      case 'edit-vault': this.openVaultModal(id); break;
+      case 'delete-vault': if (confirm('Delete?')) { Store.deleteVaultEntry(id); this.refresh(); } break;
+      case 'filter-tag': this.filters.tag = ds.tag; this.navigate('tasks'); break;
+      case 'add-cal-day': this.openItemModal(null, ds.date); break;
+      case 'export-ics': Utils.exportICS(Store.state.items.filter((i) => i.startDate)); break;
+      case 'export-backup': Utils.exportBackup(Store.state); break;
+      case 'reset-demo':
+        if (confirm('Load all demo examples? This replaces current data.')) {
+          Store.reset();
+          this.init();
+        }
+        break;
+      case 'focus-project': Store.state.settings.focusProjectId = id; Store.save(); this.refresh(); break;
+      case 'clear-focus': Store.state.settings.focusProjectId = null; Store.save(); this.refresh(); break;
+      case 'dup-project': Store.duplicateProject(id); alert('Project duplicated!'); this.refresh(); break;
+      case 'archive-project': Store.archiveProject(id); this.projectDetailId = null; this.refresh(); break;
+      case 'add-proj-item': this.openItemModal(null, null, ds.pid); break;
+      case 'log-hours': { const h = parseFloat(prompt('Hours?')); if (h) { Store.logHours(id, h); this.refresh(); } } break;
+      case 'add-version': { const v = prompt('Version (e.g. 1.1)?'); const n = prompt('Notes?'); if (v) { Store.addProjectVersion(id, v, n || ''); this.refresh(); } } break;
+      case 'use-template': this.useTemplate(ds.template); break;
+      case 'new-contact': this.openItemModal(null, null, null, 'contact'); break;
+      case 'new-link': this.openItemModal(null, null, null, 'link'); break;
+      case 'add-subscription':
+        this.promptAddSubscription();
+        break;
+      case 'delete-sub': if (confirm('Delete?')) { Store.deleteSubscription(id); this.refresh(); } break;
+      case 'edit-school-schedule': this.openSchoolScheduleModal(); break;
+      case 'open-ai': this.openAiAssistant(); break;
+      case 'start-timer': Store.startTimer(id); this.refresh(); break;
+      case 'stop-timer': {
+        const h = Store.stopTimer();
+        alert(`${(h * 60).toFixed(0)} min logged (${h.toFixed(2)}h)`);
+        this.refresh();
+        break;
+      }
+      case 'pomodoro-start': Pomodoro.start('work'); this.render(); break;
+      case 'pomodoro-break': Pomodoro.start('break'); this.render(); break;
+      case 'pomodoro-stop': Pomodoro.stop(); this.render(); break;
+      case 'add-grade': {
+        const discs = Store.getDisciplines();
+        const pick = discs.length
+          ? prompt(`Subject?\n${discs.map((d, i) => `${i + 1}. ${d.name}`).join('\n')}\n\nName or number:`)
+          : prompt('Subject?');
+        if (!pick) break;
+        const num = parseInt(pick, 10);
+        const subject = (!Number.isNaN(num) && discs[num - 1]) ? discs[num - 1].name : pick;
+        const disc = discs.find((d) => d.name.toLowerCase() === subject.toLowerCase());
+        const weight = prompt('Weight (%)?', disc?.defaultWeight ?? 30);
+        const grade = prompt('Grade (0-20)?');
+        if (subject && grade) Store.addGrade({ subject, weight, grade, semester: '2025/26' });
+        this.refresh();
+        break;
+      }
+      case 'delete-grade': if (confirm('Delete?')) { Store.deleteGrade(id); this.refresh(); } break;
+      case 'clear-contact-filters':
+        this.contactFilter = 'all';
+        this.contactSearch = '';
+        this.refresh();
+        break;
+      case 'manage-contact-groups':
+        this.personalizationTab = 'contacts';
+        this.navigate('personalization');
+        break;
+      case 'add-contact-group': this.openContactGroupModal(); break;
+      case 'edit-contact-group': this.openContactGroupModal(id); break;
+      case 'delete-contact-group': {
+        const count = Store.getItems({ type: 'contact', contactGroupId: id }).length;
+        const msg = count ? `Delete group? ${count} contact(s) will have no group.` : 'Delete group?';
+        if (confirm(msg)) { Store.deleteContactGroup(id); this.refresh(); }
+        break;
+      }
+      case 'manage-email-accounts':
+        this.personalizationTab = 'emails';
+        this.navigate('personalization');
+        break;
+      case 'add-email-account': this.openEmailAccountModal(); break;
+      case 'edit-email-account': this.openEmailAccountModal(id); break;
+      case 'delete-email-account':
+        if (confirm('Delete email account?')) {
+          if (this.emailFilter === id) this.emailFilter = 'all';
+          Store.deleteEmailAccount(id);
+          this.refresh();
+        }
+        break;
+      case 'email-filter':
+        this.emailFilter = ds.id || 'all';
+        this.render();
+        break;
+      case 'open-gmail-external': {
+        const account = Store.getEmailAccount(id);
+        if (account) window.open(Gmail.inboxUrl(account), '_blank', 'noopener');
+        break;
+      }
+      case 'compose-email': {
+        const account = Store.getEmailAccount(id);
+        if (account) window.open(Gmail.composeUrl(account), '_blank', 'noopener');
+        break;
+      }
+      case 'open-gmail-message': {
+        const account = Store.getEmailAccount(id);
+        if (account && ds.message) Gmail.openMessage(account, ds.message);
+        break;
+      }
+      case 'connect-gmail':
+        await this.connectGmailAccount(id);
+        break;
+      case 'disconnect-gmail':
+        if (confirm('Disconnect Gmail from this account?')) {
+          Store.clearEmailGmailToken(id);
+          this.render();
+        }
+        break;
+      case 'refresh-gmail':
+        await this.refreshGmailAccount(id, true);
+        break;
+      case 'refresh-all-gmail':
+        await this.refreshAllGmailAccounts(true);
+        break;
+      case 'save-gmail-settings': {
+        Store.state.settings.googleClientId = document.getElementById('google-client-id')?.value.trim() || '';
+        Store.save();
+        alert('Gmail settings saved!');
+        this.render();
+        break;
+      }
+      case 'add-vault-folder': this.openVaultFolderModal(); break;
+      case 'edit-vault-folder': this.openVaultFolderModal(id); break;
+      case 'delete-vault-folder': {
+        const vf = Store.getVaultFolder(id);
+        const count = Store.state.vaultEntries.filter((e) => e.folder === vf?.name).length;
+        const msg = count ? `Delete folder «${vf?.name}»? ${count} entry(ies) will have no folder.` : 'Delete folder?';
+        if (confirm(msg)) {
+          Store.deleteVaultFolder(id);
+          if (this.vaultFolder === id) this.vaultFolder = 'all';
+          this.refresh();
+        }
+        break;
+      }
+      case 'add-quick-tag': {
+        const inp = document.getElementById('new-quick-tag');
+        if (inp?.value) { Store.addQuickTag(inp.value); inp.value = ''; this.render(); }
+        break;
+      }
+      case 'delete-quick-tag':
+        if (confirm(`Delete tag #${ds.tag}?`)) { Store.deleteQuickTag(ds.tag); this.render(); }
+        break;
+      case 'add-config-list': {
+        const val = prompt('Name?');
+        if (val && Store.addConfigListItem(ds.list, val)) this.render();
+        else if (val) alert('Already exists or invalid.');
+        break;
+      }
+      case 'remove-config-list':
+        if (confirm(`Delete «${ds.value}»? Affected items will be remapped.`)) {
+          if (!Store.removeConfigListItem(ds.list, ds.value)) alert('At least one value must remain.');
+          else this.render();
+        }
+        break;
+      case 'rename-config-list': {
+        const val = prompt('New name?', ds.value);
+        if (val && val !== ds.value) {
+          if (!Store.renameConfigListItem(ds.list, ds.value, val)) alert('Invalid or duplicate name.');
+          else this.render();
+        }
+        break;
+      }
+      case 'move-config-list':
+        Store.moveConfigListItem(ds.list, parseInt(ds.index, 10), parseInt(ds.dir, 10));
+        this.render();
+        break;
+      case 'add-area': this.openAreaModal(); break;
+      case 'edit-area': this.openAreaModal(id); break;
+      case 'toggle-workspace-area':
+        Store.toggleWorkspaceArea(ds.ws, ds.area);
+        break;
+      case 'save-workspaces': {
+        document.querySelectorAll('.ws-icon-input').forEach((inp) => {
+          Store.updateWorkspace(inp.dataset.ws, { icon: inp.value });
+        });
+        document.querySelectorAll('.ws-label-input').forEach((inp) => {
+          Store.updateWorkspace(inp.dataset.ws, { label: inp.value });
+        });
+        this.renderWorkspaceBar();
+        alert('Workspaces saved!');
+        break;
+      }
+      case 'add-link-category': this.openLinkCategoryModal(); break;
+      case 'edit-link-category': this.openLinkCategoryModal(id); break;
+      case 'delete-link-category': {
+        const count = Store.getItems({ type: 'link' }).filter((i) => i.linkCategoryId === id).length;
+        if (confirm(count ? `Delete category? ${count} link(s) will have no category.` : 'Delete category?')) {
+          Store.deleteLinkCategory(id);
+          this.render();
+        }
+        break;
+      }
+      case 'add-discipline': this.openDisciplineModal(); break;
+      case 'edit-discipline': this.openDisciplineModal(id); break;
+      case 'delete-discipline':
+        if (confirm('Delete subject?')) { Store.deleteDiscipline(id); this.render(); }
+        break;
+      case 'add-custom-template': this.openCustomTemplateModal(); break;
+      case 'delete-custom-template':
+        if (confirm('Delete template?')) { Store.deleteCustomTemplate(id); this.render(); }
+        break;
+      case 'use-custom-template': {
+        const t = Store.getCustomTemplates().find((x) => x.id === id);
+        if (t) { Store.addItem({ ...t, id: undefined }); this.refresh(); }
+        break;
+      }
+      case 'toggle-dashboard-widget': {
+        Store.toggleDashboardWidget(ds.widget);
+        this.render();
+        break;
+      }
+      case 'export-personalization': {
+        const json = JSON.stringify(Store.exportPersonalizationConfig(), null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `candeias-personalization-${Utils.todayStr()}.json`;
+        a.click();
+        break;
+      }
+      case 'import-personalization': {
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = '.json,application/json';
+        inp.onchange = async () => {
+          const file = inp.files?.[0];
+          if (!file) return;
+          try {
+            const data = JSON.parse(await file.text());
+            if (Store.importPersonalizationConfig(data)) {
+              alert('Config imported!');
+              this.renderWorkspaceBar();
+              this.render();
+            } else alert('Invalid file.');
+          } catch {
+            alert('Error reading JSON.');
+          }
+        };
+        inp.click();
+        break;
+      }
+      case 'copy-contact-email': {
+        const item = Store.getItem(id);
+        if (item?.contactInfo?.email) { await navigator.clipboard.writeText(item.contactInfo.email); alert('Email copied!'); }
+        break;
+      }
+      case 'copy-contact-phone': {
+        const item = Store.getItem(id);
+        if (item?.contactInfo?.phone) { await navigator.clipboard.writeText(item.contactInfo.phone); alert('Phone copied!'); }
+        break;
+      }
+      case 'save-ai-settings': {
+        Store.state.settings.openaiApiKey = document.getElementById('openai-api-key')?.value.trim() || '';
+        Store.state.settings.useAiParser = document.getElementById('use-ai-parser')?.checked !== false;
+        Store.save();
+        alert('AI settings saved!');
+        this.render();
+        break;
+      }
+      case 'toggle-a11y': {
+        const key = ds.a11yKey;
+        if (!key || !(key in DEFAULT_ACCESSIBILITY)) break;
+        Store.state.settings.accessibility = { ...DEFAULT_ACCESSIBILITY, ...(Store.state.settings.accessibility || {}) };
+        Store.state.settings.accessibility[key] = !Store.state.settings.accessibility[key];
+        Store.save();
+        this.applyAccessibility();
+        this.render();
+        break;
+      }
+      case 'save-fincontrol-url': {
+        const inp = document.getElementById('fincontrol-url');
+        if (inp?.value) {
+          Store.state.settings.fincontrolUrl = inp.value.trim();
+          Store.save();
+          alert('FinControl URL saved!');
+          this.render();
+        }
+        break;
+      }
+      case 'set-theme': this.applyTheme(ds.theme); this.render(); break;
+      case 'save-search': { const name = prompt('Search name?'); if (name) { Store.addSavedSearch(name, { q: this.searchQuery, type: this.searchType }); alert('Saved!'); } } break;
+      case 'proj-filter': this.projectFilter = ds.filter; this.render(); break;
+      case 'open-client': this.clientDetailId = id; this.clientTab = 'overview'; this.render(); break;
+      case 'back-clients': this.clientDetailId = null; this.render(); break;
+      case 'new-client': this.openClientModal(); break;
+      case 'edit-client': this.openClientModal(id); break;
+      case 'add-client-contact': this.openClientContactModal(id); break;
+      case 'edit-client-contact': this.openClientContactModal(ds.client, id); break;
+      case 'delete-client-contact':
+        if (confirm('Delete contact?')) { Store.deleteClientContact(ds.client, id); this.refresh(); }
+        break;
+      case 'set-primary-contact':
+        Store.getClient(ds.client)?.contacts.forEach((c) => { c.isPrimary = c.id === id; });
+        Store.save(); this.refresh();
+        break;
+      case 'new-client-project': this.openProjectModal(id); break;
+      case 'client-vault': this.navigate('vault'); this.openVaultModal(null, id); break;
+      case 'logout': Auth.logout(); break;
+      case 'close-modal': this.closeModal(); break;
+    }
+  },
+
+  async copyVaultPassword(id) {
+    const entry = Store.state.vaultEntries.find((e) => e.id === id);
+    if (!entry || !Vault.sessionPassword) return;
+    const secrets = await Vault.loadEntrySecrets(entry, Vault.sessionPassword);
+    await navigator.clipboard.writeText(secrets.password);
+    alert('Password copied!');
+  },
+
+  async refreshGmailAccount(accountId, showAlert = false) {
+    const account = Store.getEmailAccount(accountId);
+    if (!account || !Gmail.isTokenValid(account)) {
+      if (showAlert) alert('Account not connected to Gmail.');
+      return false;
+    }
+    try {
+      const data = await Gmail.fetchInboxPreview(account.gmailAccessToken);
+      Store.setEmailPreview(accountId, data.messages, data.unreadCount);
+      if (showAlert) alert('Inbox updated!');
+      this.render();
+      return true;
+    } catch (e) {
+      Store.clearEmailGmailToken(accountId);
+      if (showAlert) alert(`Gmail sync failed: ${e.message}`);
+      this.render();
+      return false;
+    }
+  },
+
+  async refreshAllGmailAccounts(showAlert = false) {
+    const accounts = Store.getEmailAccounts().filter((a) => Gmail.isTokenValid(a));
+    if (!accounts.length) {
+      if (showAlert) alert('No connected Gmail accounts.');
+      return;
+    }
+    let ok = 0;
+    for (const a of accounts) {
+      if (await this.refreshGmailAccount(a.id, false)) ok += 1;
+    }
+    if (showAlert) alert(`Updated ${ok} of ${accounts.length} account(s).`);
+    this.render();
+  },
+
+  async connectGmailAccount(accountId) {
+    const clientId = Store.state.settings.googleClientId?.trim();
+    if (!clientId) {
+      alert('Add your Google OAuth Client ID in Settings → Gmail first.');
+      this.navigate('settings');
+      return;
+    }
+    const account = Store.getEmailAccount(accountId);
+    if (!account) return;
+    try {
+      const resp = await Gmail.connect(clientId, account.email);
+      Store.setEmailGmailToken(accountId, resp.access_token, resp.expires_in || 3600);
+      await this.refreshGmailAccount(accountId, false);
+      alert('Gmail connected!');
+      this.render();
+    } catch (e) {
+      alert(`Gmail connection failed: ${e.message}`);
+    }
+  },
+};
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await Auth.init();
+  App.init();
+});
