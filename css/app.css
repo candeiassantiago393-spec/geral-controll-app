@@ -1178,7 +1178,7 @@ textarea.form-control {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 767px) {
   .sidebar {
     position: fixed;
     left: -280px;
@@ -1294,7 +1294,7 @@ textarea.form-control {
 .stat-card { cursor: default; }
 .stat-card[data-action] { cursor: pointer; }
 
-@media (max-width: 900px) {
+@media (max-width: 767px) {
   .dash-grid { grid-template-columns: 1fr; }
   .week-grid, .timeline-grid { grid-template-columns: 1fr; }
   .client-detail-grid { grid-template-columns: 1fr; }
@@ -1527,7 +1527,7 @@ html[data-a11y-simplifiedUI="1"] .nav-item:hover {
 }
 html[data-a11y-underlineLinks="1"] a { text-decoration: underline !important; }
 
-@media (max-width: 900px) {
+@media (max-width: 767px) {
   .school-grid, .timetable-grid { grid-template-columns: 1fr; }
 }
 
@@ -1612,7 +1612,7 @@ a.btn.fincontrol-link {
 .task-row { display: flex; align-items: center; gap: 8px; }
 .sm { font-size: 11px; }
 
-@media (max-width: 900px) {
+@media (max-width: 767px) {
   .tools-grid { grid-template-columns: 1fr; }
 }
 

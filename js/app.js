@@ -228,6 +228,13 @@ const App = {
     if (['tasks', 'calendar', 'timeline', 'inbox', 'contacts', 'archive'].includes(this.currentView)) this.renderFilterBar();
   },
 
+  updateNavLayout() {
+    const menuBtn = document.getElementById('btn-menu');
+    const isPhone = window.innerWidth <= 767;
+    if (menuBtn) menuBtn.classList.toggle('hidden', !isPhone);
+    if (!isPhone) this._closeSidebar?.();
+  },
+
   bindGlobalEvents() {
     document.querySelectorAll('.nav-item[data-view]').forEach((el) => {
       el.addEventListener('click', () => { this.projectDetailId = null; this.navigate(el.dataset.view); });
@@ -247,7 +254,8 @@ const App = {
       sidebar?.classList.remove('open');
       backdrop?.classList.remove('open');
     };
-    if (window.innerWidth <= 900) menuBtn?.classList.remove('hidden');
+    this.updateNavLayout();
+    window.addEventListener('resize', () => this.updateNavLayout());
     menuBtn?.addEventListener('click', () => {
       const open = sidebar?.classList.toggle('open');
       backdrop?.classList.toggle('open', !!open);

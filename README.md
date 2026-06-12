@@ -27,10 +27,30 @@ Open http://localhost:8080
 | **iPad** | 768–1024px | Narrow sidebar, 2–3 columns |
 | **iPhone 12 Pro** | 390px | Drawer menu ☰, single column |
 
-## Deploy (GitHub Pages)
+## Deploy (GitHub Pages) — obrigatório para o site funcionar
 
-1. Push to `main` on [geral-controll-app](https://github.com/candeiassantiago393-spec/geral-controll-app)
-2. **Settings → Pages →** branch `main`, folder `/ (root)`
+O 404 aparece porque o **GitHub Pages ainda não está ativo**. Faz isto **uma vez**:
+
+### Opção A — GitHub Actions (recomendado)
+
+1. Abre https://github.com/candeiassantiago393-spec/geral-controll-app/settings/pages
+2. Em **Build and deployment → Source**, escolhe **GitHub Actions**
+3. Guarda. O workflow `.github/workflows/pages.yml` faz deploy a cada push em `main`
+4. Vai a **Actions** e confirma que o job "Deploy GitHub Pages" ficou verde ✅
+
+### Opção B — Branch manual
+
+1. Mesmo menu **Settings → Pages**
+2. **Source:** Deploy from a branch
+3. Branch: **main** · Folder: **/ (root)** → Save
+
+### URL correta
+
+https://candeiassantiago393-spec.github.io/geral-controll-app/
+
+(Não uses só `github.io` — tens de incluir `/geral-controll-app/`)
+
+Demora 1–3 minutos após ativar.
 
 ## Security
 
