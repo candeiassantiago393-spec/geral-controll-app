@@ -2,17 +2,14 @@
 
 Personal productivity app — tasks, projects, vault, calendar, clients (candeias.dev).
 
-**Live demo (GitHub Pages):**  
-https://candeiassantiago393-spec.github.io/geral-controll-app/
+**Live:** https://candeiassantiago393-spec.github.io/geral-controll-app/
 
-## Login
+## Login (private)
 
-| Field | Value |
-|-------|-------|
-| User | `santiago` |
-| Password | `1807` |
+On **first open** on each device/browser, you create your own username and password.  
+Credentials are stored **only in that device's localStorage** — nothing is published in this repo.
 
-After first password login you can enable **Face ID / Touch ID** on supported phones (requires HTTPS — works on GitHub Pages).
+Optional: **Face ID / Touch ID** after first password login (HTTPS required).
 
 ## Local development
 
@@ -22,19 +19,25 @@ python -m http.server 8080
 
 Open http://localhost:8080
 
+## Devices
+
+| Device | Width | Layout |
+|--------|-------|--------|
+| **Windows desktop** | ≥1025px | Full sidebar, multi-column grids |
+| **iPad** | 768–1024px | Narrow sidebar, 2–3 columns |
+| **iPhone 12 Pro** | 390px | Drawer menu ☰, single column |
+
 ## Deploy (GitHub Pages)
 
-1. Push code to `main` on [geral-controll-app](https://github.com/candeiassantiago393-spec/geral-controll-app)
-2. GitHub → **Settings → Pages**
-3. **Build and deployment → Source:** Deploy from a branch
-4. Branch: `main` · Folder: `/ (root)` → **Save**
+1. Push to `main` on [geral-controll-app](https://github.com/candeiassantiago393-spec/geral-controll-app)
+2. **Settings → Pages →** branch `main`, folder `/ (root)`
 
-Site URL: https://candeiassantiago393-spec.github.io/geral-controll-app/
+## Security
 
-## Security note
-
-This is a **client-side** login gate for a public static app. Credentials are not server-protected — do not store highly sensitive data without understanding this limitation. The Vault uses local encryption with your master password.
+- Login is a **client-side gate** — not server-protected. Do not treat it like bank-level security.
+- Never put passwords in README or source code.
+- Vault data uses a separate master password with local encryption.
 
 ## Stack
 
-Vanilla HTML/CSS/JS · localStorage · PWA manifest · WebAuthn biometrics
+Vanilla HTML/CSS/JS · localStorage · PWA · WebAuthn biometrics

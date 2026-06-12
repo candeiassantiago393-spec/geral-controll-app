@@ -2,8 +2,9 @@ const Auth = {
   SESSION_KEY: 'candeias_auth_session',
   REMEMBER_KEY: 'candeias_auth_remember',
   WEBAUTHN_KEY: 'candeias_webauthn_cred',
-  USER_HASH: '49faaade493be8b6b6164ee67f7e4d101812a5dda970d6ca693dda8b8cf82e4b',
-  PASS_HASH: '9589262630f775d921bef5b9b2d36fa40f91afebeab887deefc721ff3c787b2c',
+  USER_HASH_KEY: 'candeias_auth_user_hash',
+  PASS_HASH_KEY: 'candeias_auth_pass_hash',
+  USERNAME_KEY: 'candeias_auth_username',
 
   getRpId() {
     const host = location.hostname;
@@ -13,6 +14,10 @@ const Auth = {
 
   supportsWebAuthn() {
     return !!(window.PublicKeyCredential && navigator.credentials?.create);
+  },
+
+  hasCredentials() {
+    return !!(localStorage.getItem(this.USER_HASH_KEY) && localStorage.getItem(this.PASS_HASH_KEY));
   },
 
   hasFaceId() {
@@ -40,10 +45,26 @@ const Auth = {
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   },
 
+  async saveCredentials(user, pass) {
+    const username = user.trim().toLowerCase();
+    if (!username || pass.length < 4) {
+      throw new Error('User required and password must be at least 4 characters.');
+    }
+    localStorage.setItem(this.USER_HASH_KEY, await this.sha256(username));
+    localStorage.setItem(this.PASS_HASH_KEY, await this.sha256(pass));
+    localStorage.setItem(this.USERNAME_KEY, username);
+  },
+
   async verifyPassword(user, pass) {
+    if (!this.hasCredentials()) return false;
     const uh = await this.sha256(user.trim().toLowerCase());
     const ph = await this.sha256(pass);
-    return uh === this.USER_HASH && ph === this.PASS_HASH;
+    return uh === localStorage.getItem(this.USER_HASH_KEY)
+      && ph === localStorage.getItem(this.PASS_HASH_KEY);
+  },
+
+  getStoredUsername() {
+    return localStorage.getItem(this.USERNAME_KEY) || 'user';
   },
 
   bufToB64(buf) {
@@ -59,15 +80,16 @@ const Auth = {
 
   async registerFaceId() {
     if (!this.supportsWebAuthn()) throw new Error('Biometrics not supported on this device/browser.');
+    const username = this.getStoredUsername();
     const challenge = crypto.getRandomValues(new Uint8Array(32));
     const cred = await navigator.credentials.create({
       publicKey: {
         challenge,
         rp: { name: 'Candeias Control', id: this.getRpId() },
         user: {
-          id: new TextEncoder().encode('santiago'),
-          name: 'santiago',
-          displayName: 'Santiago',
+          id: new TextEncoder().encode(username),
+          name: username,
+          displayName: username,
         },
         pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
         authenticatorSelection: {
@@ -106,6 +128,54 @@ const Auth = {
   showApp() {
     document.getElementById('login-gate')?.classList.add('hidden');
     document.getElementById('app-shell')?.classList.remove('hidden');
+  },
+
+  renderSetup(onSuccess) {
+    const gate = document.getElementById('login-gate');
+    if (!gate) return;
+    gate.innerHTML = `
+      <div class="login-card">
+        <div class="brand-icon lg login-logo">C</div>
+        <h1 class="login-title">Candeias</h1>
+        <p class="login-sub muted">First time on this device — create your login.<br>Stored only here, not on GitHub.</p>
+        <form id="setup-form" class="login-form">
+          <div class="form-group">
+            <label>User</label>
+            <input class="form-control" name="user" autocomplete="username" required placeholder="Choose a username">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input class="form-control" type="password" name="pass" autocomplete="new-password" required minlength="4" placeholder="At least 4 characters">
+          </div>
+          <div class="form-group">
+            <label>Confirm password</label>
+            <input class="form-control" type="password" name="pass2" autocomplete="new-password" required minlength="4">
+          </div>
+          <p class="login-error hidden" id="login-error"></p>
+          <button type="submit" class="btn btn-primary w100 login-submit">Create login</button>
+        </form>
+      </div>`;
+
+    const errEl = document.getElementById('login-error');
+    document.getElementById('setup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.classList.add('hidden');
+      const fd = new FormData(e.target);
+      if (fd.get('pass') !== fd.get('pass2')) {
+        errEl.textContent = 'Passwords do not match.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      try {
+        await this.saveCredentials(fd.get('user'), fd.get('pass'));
+        this.setSession(true);
+        this.showApp();
+        onSuccess?.();
+      } catch (ex) {
+        errEl.textContent = ex.message;
+        errEl.classList.remove('hidden');
+      }
+    });
   },
 
   renderLogin(onSuccess) {
@@ -207,10 +277,15 @@ const Auth = {
         resolve(true);
         return;
       }
-      this.renderLogin(() => {
+      const done = () => {
         onSuccess?.();
         resolve(true);
-      });
+      };
+      if (!this.hasCredentials()) {
+        this.renderSetup(done);
+      } else {
+        this.renderLogin(done);
+      }
     });
   },
 };

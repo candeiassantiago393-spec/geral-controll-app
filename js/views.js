@@ -1115,7 +1115,7 @@ const AppViews = {
       <div class="settings-box mb"><h3>Saved searches</h3>
         ${(s.savedSearches||[]).map((sr)=>`<div class="item-card mb mini">${Utils.esc(sr.name)}</div>`).join('')||'<p class="muted">None</p>'}</div>
       <div class="settings-box mb"><h3>Account</h3>
-        <p class="muted mb">Signed in. Face ID can be set up from the login screen.</p>
+        <p class="muted mb">Login is stored only on this device. Face ID can be enabled from the login screen.</p>
         <button class="btn btn-sm btn-ghost danger-left" data-action="logout">Sign out</button></div>
       <div class="settings-box about-box"><div class="brand-icon lg">C</div><h2>Candeias</h2><p class="green">candeias.dev</p>
       <p class="muted">Organize. Build. Live.</p><p>Version 3.0 — full examples</p>
