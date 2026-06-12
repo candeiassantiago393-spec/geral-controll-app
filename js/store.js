@@ -211,6 +211,18 @@ const Store = {
     this.save();
   },
 
+  importBackup(data) {
+    if (!data || typeof data !== 'object') return false;
+    try {
+      this.state = migrateState(data);
+      this.state.vaultUnlocked = false;
+      this.save({ skipCloud: true });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   trackRecent(id) {
     const recent = this.state.settings.recentItems.filter((r) => r !== id);
     recent.unshift(id);

@@ -889,6 +889,29 @@ const App = {
       case 'add-cal-day': this.openItemModal(null, ds.date); break;
       case 'export-ics': Utils.exportICS(Store.state.items.filter((i) => i.startDate)); break;
       case 'export-backup': Utils.exportBackup(Store.state); break;
+      case 'import-backup': {
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = '.json,application/json';
+        inp.onchange = async () => {
+          const file = inp.files?.[0];
+          if (!file) return;
+          try {
+            const data = JSON.parse(await file.text());
+            if (!confirm('Replace all current data with this backup?')) return;
+            if (Store.importBackup(data)) {
+              alert('Backup imported! Your data is restored.');
+              App.renderWorkspaceBar?.();
+              App.renderAreaFilters?.();
+              App.refresh?.();
+            } else alert('Invalid backup file.');
+          } catch {
+            alert('Error reading JSON file.');
+          }
+        };
+        inp.click();
+        break;
+      }
       case 'reset-demo':
         if (confirm('Load all demo examples? This replaces current data.')) {
           Store.reset();

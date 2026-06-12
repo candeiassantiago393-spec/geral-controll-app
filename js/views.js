@@ -1114,6 +1114,13 @@ const AppViews = {
         ${Store.getActiveProjects().map((p)=>`<option value="${p.id}" ${s.focusProjectId===p.id?'selected':''}>${Utils.esc(p.name)}</option>`).join('')}</select></div>
       <div class="settings-box mb"><h3>Saved searches</h3>
         ${(s.savedSearches||[]).map((sr)=>`<div class="item-card mb mini">${Utils.esc(sr.name)}</div>`).join('')||'<p class="muted">None</p>'}</div>
+      <div class="settings-box mb"><h3>Data backup (PC → casa)</h3>
+        <p class="muted mb sm">Use isto no PC da empresa <strong>sem Firebase</strong>. Exporta agora, guarda o ficheiro na pasta <code>backups/</code> deste projeto. Em casa importas e depois ligamos o Firebase.</p>
+        <div class="btn-row">
+          <button class="btn btn-sm btn-primary" data-action="export-backup">⬇ Export backup</button>
+          <button class="btn btn-sm" data-action="import-backup">⬆ Import backup</button>
+        </div>
+        <p class="muted sm mt">O ficheiro JSON fica só no teu PC — não vai para o GitHub.</p></div>
       <div class="settings-box mb"><h3>Cloud sync (PC + phone)</h3>
         <p class="muted mb sm">One account, same tasks everywhere. Uses free <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase</a> (Auth + Firestore).</p>
         <p class="muted mb sm"><strong>Setup once:</strong> Firebase → Create project → Authentication (Email) → Firestore → paste config below.</p>
