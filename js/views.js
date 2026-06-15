@@ -47,8 +47,10 @@ const AppViews = {
           ${item.tags.map((t) => `<span class="tag tag-click" data-action="filter-tag" data-tag="${Utils.esc(t)}">#${Utils.esc(t)}</span>`).join('')}
         </div>
         <div class="item-actions">
-          <button class="btn btn-sm btn-ghost" data-action="toggle-pin" data-id="${item.id}">${item.pinned ? 'Unpin' : 'Pin'}</button>
-          <button class="btn btn-sm btn-ghost" data-action="archive-item" data-id="${item.id}">Archive</button>
+          <button class="btn btn-sm" data-action="open-item" data-id="${item.id}">${I18n.t('action.edit')}</button>
+          ${item.archived ? `<button class="btn btn-sm btn-ghost" data-action="unarchive-item" data-id="${item.id}">${I18n.t('action.restore')}</button>` : `<button class="btn btn-sm btn-ghost" data-action="toggle-pin" data-id="${item.id}">${item.pinned ? I18n.t('action.unpin') : I18n.t('action.pin')}</button>
+          <button class="btn btn-sm btn-ghost" data-action="archive-item" data-id="${item.id}">${I18n.t('action.archive')}</button>`}
+          <button class="btn btn-sm btn-ghost danger-left" data-action="delete-item" data-id="${item.id}">${I18n.t('action.delete')}</button>
         </div>
       </div>`;
   },
@@ -199,15 +201,22 @@ const AppViews = {
     projects = App.filterProjects(projects);
     const hasFilters = App.hasArchiveDateFilters();
     return `${App.renderScopeBanner()}
-      <div class="section-header"><div class="section-title">Archive</div></div>
+      <div class="section-header"><div class="section-title">${I18n.t('view.archive')}</div></div>
       ${hasFilters ? `<div class="info-banner">Date filters active · ${projects.length} of ${allProjects.length} projects · ${items.length} of ${allItems.length} items · <a href="#" data-action="clear-archive-filters">Clear filters</a></div>` : ''}
-      <h3 class="sub-heading">Archived projects (${projects.length}${hasFilters ? ` of ${allProjects.length}` : ''})</h3>
-      ${projects.map((p) => `<div class="item-card mb" data-action="open-project" data-id="${p.id}">
-        <strong>${Utils.esc(p.name)}</strong>
-        <span class="muted sm"> · ${Utils.fmtDate(App.archiveDateStr(p))}</span>
-      </div>`).join('') || '<p class="muted">No projects</p>'}
-      <h3 class="sub-heading mt">Archived items (${items.length}${hasFilters ? ` of ${allItems.length}` : ''})</h3>
-      ${items.map((i) => this.renderItemCard(i)).join('') || `<p class="muted">${hasFilters ? 'No items match these dates' : 'No items'}</p>`}`;
+      <h3 class="sub-heading">${I18n.t('archive.projects')} (${projects.length}${hasFilters ? ` of ${allProjects.length}` : ''})</h3>
+      ${projects.map((p) => `<div class="item-card mb">
+        <div class="flex-center" data-action="open-project" data-id="${p.id}" style="cursor:pointer">
+          <strong>${Utils.esc(p.name)}</strong>
+          <span class="muted sm"> · ${Utils.fmtDate(App.archiveDateStr(p))}</span>
+        </div>
+        <div class="item-actions mt">
+          <button class="btn btn-sm" data-action="edit-project" data-id="${p.id}">${I18n.t('action.edit')}</button>
+          <button class="btn btn-sm btn-ghost" data-action="unarchive-project" data-id="${p.id}">${I18n.t('action.restore')}</button>
+          <button class="btn btn-sm btn-ghost danger-left" data-action="delete-project" data-id="${p.id}">${I18n.t('action.delete')}</button>
+        </div>
+      </div>`).join('') || `<p class="muted">${I18n.t('archive.noProjects')}</p>`}
+      <h3 class="sub-heading mt">${I18n.t('archive.items')} (${items.length}${hasFilters ? ` of ${allItems.length}` : ''})</h3>
+      ${items.map((i) => this.renderItemCard(i)).join('') || `<p class="muted">${hasFilters ? 'No items match these dates' : I18n.t('archive.noItems')}</p>`}`;
   },
 
   renderReview() {
@@ -948,21 +957,28 @@ const AppViews = {
     const grouped = {};
     for (const p of projects) { if (!grouped[p.areaId]) grouped[p.areaId] = []; grouped[p.areaId].push(p); }
     return `${App.renderScopeBanner()}
-      <div class="section-header"><div class="section-title">Projects</div>
+      <div class="section-header"><div class="section-title">${I18n.t('view.projects')}</div>
         <div class="btn-row">
-          <button class="btn btn-sm ${App.projectFilter==='active'?'btn-primary':''}" data-action="proj-filter" data-filter="active">Active</button>
-          <button class="btn btn-sm ${App.projectFilter==='archived'?'btn-primary':''}" data-action="proj-filter" data-filter="archived">Archive</button>
-          <button class="btn btn-primary btn-sm" data-action="add-project">+ Project</button>
+          <button class="btn btn-sm ${App.projectFilter==='active'?'btn-primary':''}" data-action="proj-filter" data-filter="active">${I18n.t('projects.active')}</button>
+          <button class="btn btn-sm ${App.projectFilter==='archived'?'btn-primary':''}" data-action="proj-filter" data-filter="archived">${I18n.t('projects.archived')}</button>
+          <button class="btn btn-primary btn-sm" data-action="add-project">${I18n.t('projects.add')}</button>
         </div></div>
       ${Object.entries(grouped).map(([areaId, projs]) => {
         const area = Store.getArea(areaId);
         return `<div class="mb-lg"><h3 class="sub-heading">${area?.icon} ${Utils.esc(area?.name)}</h3><div class="card-grid">
-          ${projs.map((p) => `<div class="project-card" data-action="open-project" data-id="${p.id}">
+          ${projs.map((p) => `<div class="project-card">
+            <div data-action="open-project" data-id="${p.id}" style="cursor:pointer">
             <div class="project-header"><div class="project-color" style="background:${p.color}"></div>
             <div><div class="project-name">${Utils.esc(p.name)}</div><div class="project-client">${Utils.esc(p.client)} ${p.stack?`· ${Utils.esc(p.stack)}`:''}</div></div></div>
             ${p.pipeline?`<span class="pipeline-badge">${Utils.esc(p.pipeline)}</span>`:''}
             ${p.paymentStatus?`<span class="tag">${Utils.esc(p.paymentStatus)}</span>`:''}
             <div class="muted mt">${Store.getItems({projectId:p.id}).length} items · ${p.loggedHours||0}/${p.estimatedHours||'?'}h</div>
+            </div>
+            ${showArchived ? `<div class="item-actions mt">
+              <button class="btn btn-sm" data-action="edit-project" data-id="${p.id}">${I18n.t('action.edit')}</button>
+              <button class="btn btn-sm btn-ghost" data-action="unarchive-project" data-id="${p.id}">${I18n.t('action.restore')}</button>
+              <button class="btn btn-sm btn-ghost danger-left" data-action="delete-project" data-id="${p.id}">${I18n.t('action.delete')}</button>
+            </div>` : ''}
           </div>`).join('')}</div></div>`;
       }).join('') || '<div class="empty-state"><div class="icon">📁</div><h3>No projects</h3></div>'}`;
   },
@@ -976,6 +992,8 @@ const AppViews = {
     if (App.projectTab !== 'overview' && App.projectTab !== 'attachments' && App.projectTab !== 'hours' && App.projectTab !== 'versions') {
       const types = tabs[App.projectTab];
       if (Array.isArray(types)) items = items.filter((i) => types.includes(i.type));
+      items = App.filterProjectItems(items);
+      items = App.sortProjectItems(items);
     }
     const tabHtml = Object.keys(tabs).map((t) => `<button class="tab ${App.projectTab===t?'active':''}" data-tab="${t}">${typeof tabs[t]==='string'?tabs[t]:t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('');
     let body = '';
@@ -986,9 +1004,13 @@ const AppViews = {
       }).join('')}</div>
       <div class="btn-row mb">
         <button class="btn btn-sm btn-primary" data-action="add-proj-item" data-pid="${projectId}">+ Item</button>
-        <button class="btn btn-sm" data-action="focus-project" data-id="${projectId}">Focus mode</button>
-        <button class="btn btn-sm" data-action="dup-project" data-id="${projectId}">Duplicate</button>
-        <button class="btn btn-sm" data-action="archive-project" data-id="${projectId}">Archive</button>
+        <button class="btn btn-sm" data-action="edit-project" data-id="${projectId}">${I18n.t('action.edit')}</button>
+        <button class="btn btn-sm" data-action="focus-project" data-id="${projectId}">${I18n.t('projects.focus')}</button>
+        <button class="btn btn-sm" data-action="dup-project" data-id="${projectId}">${I18n.t('projects.duplicate')}</button>
+        ${project.archived
+          ? `<button class="btn btn-sm" data-action="unarchive-project" data-id="${projectId}">${I18n.t('action.restore')}</button>`
+          : `<button class="btn btn-sm" data-action="archive-project" data-id="${projectId}">${I18n.t('action.archive')}</button>`}
+        <button class="btn btn-sm btn-ghost danger-left" data-action="delete-project" data-id="${projectId}">${I18n.t('action.delete')}</button>
       </div>
       ${Store.getItems({projectId}).slice(0,8).map((i)=>this.renderItemCard(i)).join('')}`;
     } else if (App.projectTab === 'attachments') {
@@ -1004,9 +1026,12 @@ const AppViews = {
       body = (project.versions||[]).map((v) => `<div class="item-card mb"><strong>v${Utils.esc(v.version)}</strong> — ${Utils.fmtDate(v.date)}<p class="muted">${Utils.esc(v.notes)}</p></div>`).join('')
         + `<button class="btn btn-sm mt" data-action="add-version" data-id="${projectId}">+ Version</button>`;
     } else {
-      body = items.length ? items.map((i) => (i.type==='task'||i.type==='checklist') ? this.renderTaskRow(i) : this.renderItemCard(i)).join('') : '<div class="empty-state"><p>No items</p></div>';
+      const filterBar = ['notes', 'tasks', 'events', 'contacts', 'links'].includes(App.projectTab)
+        ? App.renderProjectItemFilters()
+        : '';
+      body = filterBar + (items.length ? items.map((i) => (i.type==='task'||i.type==='checklist') ? this.renderTaskRow(i) : this.renderItemCard(i)).join('') : '<div class="empty-state"><p>No items</p></div>');
     }
-    return `<button class="btn btn-ghost btn-sm mb" data-action="back-projects">← Back</button>
+    return `<button class="btn btn-ghost btn-sm mb" data-action="back-projects">${I18n.t('projects.back')}</button>
       <div class="project-header mb"><div class="project-color" style="background:${project.color};height:56px"></div>
       <div><div class="project-name lg">${Utils.esc(project.name)}</div>
       <div class="project-client">${area?.icon} ${Utils.esc(area?.name)} · ${Utils.esc(project.client)}</div>
@@ -1084,8 +1109,13 @@ const AppViews = {
 
   renderSettings() {
     const s = Store.state.settings;
-    return `<div class="section-header"><div class="section-title">Settings</div></div>
-      <div class="settings-box mb"><h3>Theme</h3>
+    const lang = s.language || 'en';
+    return `<div class="section-header"><div class="section-title">${I18n.t('view.settings')}</div></div>
+      <div class="settings-box mb"><h3>${I18n.t('settings.language')}</h3>
+        <p class="muted mb">${I18n.t('settings.language.desc')}</p>
+        <button class="btn btn-sm ${lang==='en'?'btn-primary':''}" data-action="set-language" data-language="en">${I18n.t('settings.language.en')}</button>
+        <button class="btn btn-sm ${lang==='pt'?'btn-primary':''}" data-action="set-language" data-language="pt">${I18n.t('settings.language.pt')}</button></div>
+      <div class="settings-box mb"><h3>${I18n.t('settings.theme')}</h3>
         <button class="btn btn-sm ${s.theme==='dark'?'btn-primary':''}" data-action="set-theme" data-theme="dark">Dark</button>
         <button class="btn btn-sm ${s.theme==='light'?'btn-primary':''}" data-action="set-theme" data-theme="light">Light</button></div>
       <div class="settings-box mb"><h3>Personalization</h3>

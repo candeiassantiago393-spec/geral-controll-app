@@ -124,6 +124,41 @@ def _latest_cloud_backup() -> dict:
     return {}
 
 
+def _merge_entity_lists(local_list: list | None, remote_list: list | None) -> list:
+    merged: dict = {}
+    for entry in (remote_list or []) + (local_list or []):
+        if not isinstance(entry, dict) or not entry.get("id"):
+            continue
+        entry_id = entry["id"]
+        prev = merged.get(entry_id)
+        if not prev:
+            merged[entry_id] = entry
+            continue
+        prev_at = str(prev.get("updatedAt") or prev.get("createdAt") or "")
+        next_at = str(entry.get("updatedAt") or entry.get("createdAt") or "")
+        merged[entry_id] = entry if next_at >= prev_at else prev
+    return list(merged.values())
+
+
+def _merge_states(local_state: dict, remote_state: dict) -> dict:
+    if not remote_state:
+        return local_state
+    if not local_state:
+        return remote_state
+    return {
+        **local_state,
+        "projects": _merge_entity_lists(local_state.get("projects"), remote_state.get("projects")),
+        "items": _merge_entity_lists(local_state.get("items"), remote_state.get("items")),
+        "clients": _merge_entity_lists(local_state.get("clients"), remote_state.get("clients")),
+        "vaultEntries": _merge_entity_lists(local_state.get("vaultEntries"), remote_state.get("vaultEntries")),
+        "subscriptions": _merge_entity_lists(local_state.get("subscriptions"), remote_state.get("subscriptions")),
+        "grades": _merge_entity_lists(local_state.get("grades"), remote_state.get("grades")),
+        "areas": local_state.get("areas") or remote_state.get("areas") or [],
+        "settings": {**(remote_state.get("settings") or {}), **(local_state.get("settings") or {})},
+        "version": local_state.get("version") or remote_state.get("version") or 3,
+    }
+
+
 def _decide_sync(local_state: dict, local_at: str, remote: dict) -> dict:
     remote_state = remote.get("state") if isinstance(remote.get("state"), dict) else None
     remote_at = str(remote.get("updatedAt") or "").strip()
@@ -161,6 +196,41 @@ def _decide_sync(local_state: dict, local_at: str, remote: dict) -> dict:
             "state": local_state,
         }
 
+    # More records wins — avoid overwriting richer data with a newer but smaller cloud copy.
+    if local_score > remote_score:
+        updated_at = local_at or now
+        payload = {"state": local_state, "updatedAt": updated_at, "version": ""}
+        _save_cloud(payload)
+        return {
+            "changed": True,
+            "direction": "push",
+            "message": f"This device has more data ({local_score} vs {remote_score}) — uploaded.",
+            "updatedAt": updated_at,
+            "state": local_state,
+        }
+
+    if remote_score > local_score:
+        return {
+            "changed": True,
+            "direction": "pull",
+            "message": f"Cloud has more data ({remote_score} vs {local_score}) — downloaded.",
+            "updatedAt": remote_at or now,
+            "state": remote_state,
+        }
+
+    if local_score == remote_score and local_score > 0:
+        merged = _merge_states(local_state, remote_state)
+        updated_at = now
+        payload = {"state": merged, "updatedAt": updated_at, "version": ""}
+        _save_cloud(payload)
+        return {
+            "changed": True,
+            "direction": "push",
+            "message": "Merged both copies — uploaded.",
+            "updatedAt": updated_at,
+            "state": merged,
+        }
+
     if not local_at or (remote_at and remote_at > local_at):
         return {
             "changed": True,
@@ -178,27 +248,6 @@ def _decide_sync(local_state: dict, local_at: str, remote: dict) -> dict:
             "direction": "push",
             "message": "This device is newer — uploaded.",
             "updatedAt": local_at,
-            "state": local_state,
-        }
-
-    if remote_score > local_score:
-        return {
-            "changed": True,
-            "direction": "pull",
-            "message": "Cloud has more data — downloaded.",
-            "updatedAt": remote_at or now,
-            "state": remote_state,
-        }
-
-    if local_score > remote_score:
-        updated_at = local_at or now
-        payload = {"state": local_state, "updatedAt": updated_at, "version": ""}
-        _save_cloud(payload)
-        return {
-            "changed": True,
-            "direction": "push",
-            "message": "This device has more data — uploaded.",
-            "updatedAt": updated_at,
             "state": local_state,
         }
 
@@ -298,13 +347,15 @@ def sync_now(body: SyncNowIn, x_sync_token: str | None = Header(default=None)):
     local_at = (body.updatedAt or "").strip()
     result = _decide_sync(body.state, local_at, remote)
     if result["direction"] == "push" and result["changed"]:
+        state = result.get("state") or body.state
         payload = {
-            "state": body.state,
+            "state": state,
             "updatedAt": result["updatedAt"],
             "version": body.version or "",
         }
-        _save_cloud(payload)
-        result["state"] = body.state
+        if not result.get("state"):
+            _save_cloud(payload)
+        result["state"] = state
     return {"ok": True, **result}
 
 

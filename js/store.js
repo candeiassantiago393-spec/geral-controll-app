@@ -228,7 +228,14 @@ const Store = {
     try {
       this.state = migrateState(data);
       this.state.vaultUnlocked = false;
+      this.state.cloudUpdatedAt = new Date().toISOString();
       this.save({ skipCloud: true });
+      if (typeof CloudSync !== 'undefined') {
+        CloudSync.emergencyBackup();
+        if (CloudSync.isSignedIn()) {
+          CloudSync.pushToCloud({ force: true }).catch((e) => console.warn('Post-import cloud push failed', e));
+        }
+      }
       return true;
     } catch {
       return false;
@@ -542,6 +549,23 @@ const Store = {
 
   archiveProject(id) {
     return this.updateProject(id, { archived: true });
+  },
+
+  unarchiveProject(id) {
+    return this.updateProject(id, { archived: false });
+  },
+
+  deleteProject(id) {
+    this.state.items = this.state.items.filter((i) => i.projectId !== id);
+    this.state.projects = this.state.projects.filter((p) => p.id !== id);
+    if (this.state.settings.focusProjectId === id) {
+      this.state.settings.focusProjectId = null;
+    }
+    this.save();
+  },
+
+  unarchiveItem(id) {
+    return this.updateItem(id, { archived: false });
   },
 
   addProjectVersion(id, version, notes) {

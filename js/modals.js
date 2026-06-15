@@ -386,28 +386,30 @@ const AppModals = {
     });
   },
 
-  openProjectModal(presetClientId = null) {
+  openProjectModal(presetClientId = null, projectId = null) {
+    const project = projectId ? Store.getProject(projectId) : null;
+    const isEdit = !!project;
     const clients = Store.getClients();
-    this.openModal(`<div class="modal"><div class="modal-header"><h2>New project</h2><button class="btn btn-ghost btn-icon" data-action="close-modal">✕</button></div>
+    this.openModal(`<div class="modal"><div class="modal-header"><h2>${isEdit ? I18n.t('project.edit') : I18n.t('project.new')}</h2><button class="btn btn-ghost btn-icon" data-action="close-modal">✕</button></div>
       <form id="project-form"><div class="modal-body">
-        <div class="form-group"><label>Name</label><input class="form-control" name="name" required></div>
-        <div class="form-group"><label>Area</label><select class="form-control" name="areaId" id="proj-area">${Store.state.areas.map((a) => `<option value="${a.id}" ${a.id === 'area-freelance' ? 'selected' : ''}>${a.icon} ${Utils.esc(a.name)}</option>`).join('')}</select></div>
+        <div class="form-group"><label>Name</label><input class="form-control" name="name" required value="${Utils.esc(project?.name || '')}"></div>
+        <div class="form-group"><label>Area</label><select class="form-control" name="areaId" id="proj-area">${Store.state.areas.map((a) => `<option value="${a.id}" ${project ? (project.areaId === a.id ? 'selected' : '') : (a.id === 'area-freelance' ? 'selected' : '')}>${a.icon} ${Utils.esc(a.name)}</option>`).join('')}</select></div>
         <div class="form-group"><label>Client (candeias.dev)</label>
           <select class="form-control" name="clientId" id="proj-client">
             <option value="">— Manual / no client —</option>
-            ${clients.map((c) => `<option value="${c.id}" ${presetClientId === c.id ? 'selected' : ''}>${Utils.esc(c.name)}${c.company ? ` (${Utils.esc(c.company)})` : ''}</option>`).join('')}
+            ${clients.map((c) => `<option value="${c.id}" ${(project?.clientId === c.id || presetClientId === c.id) ? 'selected' : ''}>${Utils.esc(c.name)}${c.company ? ` (${Utils.esc(c.company)})` : ''}</option>`).join('')}
           </select></div>
-        <div class="form-row"><div class="form-group"><label>Client name (if manual)</label><input class="form-control" name="client" id="proj-client-name"></div>
-        <div class="form-group"><label>Email</label><input class="form-control" name="clientEmail" id="proj-client-email"></div></div>
-        <div class="form-row"><div class="form-group"><label>Phone</label><input class="form-control" name="clientPhone"></div>
-        <div class="form-group"><label>Stack</label><input class="form-control" name="stack"></div></div>
-        <div class="form-row"><div class="form-group"><label>Pipeline</label><select class="form-control" name="pipeline"><option value="">—</option>${Store.getPipelineStages().map((s) => `<option>${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>Payment</label><select class="form-control" name="paymentStatus"><option value="">—</option>${Store.getPaymentStatuses().map((s) => `<option>${s}</option>`).join('')}</select></div></div>
-        <div class="form-row"><div class="form-group"><label>Estimated hours</label><input class="form-control" type="number" name="estimatedHours"></div>
-        <div class="form-group"><label>URL</label><input class="form-control" name="url"></div></div>
-        <div class="form-group"><label>Description</label><textarea class="form-control" name="description"></textarea></div>
-      </div><div class="modal-footer"><button type="button" class="btn" data-action="close-modal">Cancel</button>
-      <button type="submit" class="btn btn-primary">Create</button></div></form></div>`);
+        <div class="form-row"><div class="form-group"><label>Client name (if manual)</label><input class="form-control" name="client" id="proj-client-name" value="${Utils.esc(project?.client || '')}"></div>
+        <div class="form-group"><label>Email</label><input class="form-control" name="clientEmail" id="proj-client-email" value="${Utils.esc(project?.clientEmail || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label>Phone</label><input class="form-control" name="clientPhone" value="${Utils.esc(project?.clientPhone || '')}"></div>
+        <div class="form-group"><label>Stack</label><input class="form-control" name="stack" value="${Utils.esc(project?.stack || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label>Pipeline</label><select class="form-control" name="pipeline"><option value="">—</option>${Store.getPipelineStages().map((s) => `<option ${project?.pipeline === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label>Payment</label><select class="form-control" name="paymentStatus"><option value="">—</option>${Store.getPaymentStatuses().map((s) => `<option ${project?.paymentStatus === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
+        <div class="form-row"><div class="form-group"><label>Estimated hours</label><input class="form-control" type="number" name="estimatedHours" value="${project?.estimatedHours ?? ''}"></div>
+        <div class="form-group"><label>URL</label><input class="form-control" name="url" value="${Utils.esc(project?.url || '')}"></div></div>
+        <div class="form-group"><label>Description</label><textarea class="form-control" name="description">${Utils.esc(project?.description || '')}</textarea></div>
+      </div><div class="modal-footer"><button type="button" class="btn" data-action="close-modal">${I18n.t('action.cancel')}</button>
+      <button type="submit" class="btn btn-primary">${isEdit ? I18n.t('action.save') : I18n.t('action.create')}</button></div></form></div>`);
     const clientSel = document.getElementById('proj-client');
     const fillClient = () => {
       const c = Store.getClient(clientSel.value);
@@ -417,13 +419,14 @@ const AppModals = {
       }
     };
     clientSel?.addEventListener('change', fillClient);
-    if (presetClientId) fillClient();
+    if (presetClientId && !isEdit) fillClient();
     document.getElementById('project-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target));
       data.clientId = data.clientId || null;
       data.estimatedHours = parseFloat(data.estimatedHours) || 0;
-      Store.addProject(data);
+      if (isEdit) Store.updateProject(projectId, data);
+      else Store.addProject(data);
       this.closeModal();
       App.refresh();
     });

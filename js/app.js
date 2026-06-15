@@ -7,6 +7,8 @@ const App = {
   projectDetailId: null,
   projectTab: 'overview',
   projectFilter: 'active',
+  projectItemFilter: 'all',
+  projectItemSort: 'date-desc',
   taskFilter: 'all',
   clientDetailId: null,
   clientTab: 'overview',
@@ -46,6 +48,7 @@ const App = {
     this.bindGlobalEvents();
     AppUpdate.init();
     CloudSync.init();
+    I18n.apply();
     this.offerClearDemoIfNeeded();
     this.renderWorkspaceBar();
     this.renderAreaFilters();
@@ -322,37 +325,37 @@ const App = {
       el.classList.toggle('active', el.dataset.view === view);
     });
     const titles = {
-      dashboard: ['Dashboard', 'candeias.dev panel'],
-      inbox: ['Inbox', 'To classify'],
-      today: ['Today', 'Daily agenda'],
-      calendar: ['Calendar', 'Month · Week · Agenda'],
-      timeline: ['Timeline', 'Tasks with duration'],
-      tasks: ['Tasks', 'Time filters'],
-      overdue: ['Overdue', 'Past deadlines'],
-      pinned: ['Pinned', 'Important items'],
-      blocked: ['Blocked', 'Waiting'],
-      projects: ['Projects', 'Clients & delivery'],
-      kanban: ['Kanban', 'Dev pipeline'],
-      clients: ['Clients', 'candeias.dev — contacts & projects'],
-      vault: ['Vault', 'Emails & passwords'],
-      contacts: ['Contacts', 'Groups & people'],
-      emails: ['Emails', 'Work · School · Personal · Gmail'],
-      links: ['Links', 'Bookmarks'],
-      subscriptions: ['Subscriptions', 'Renewals'],
-      templates: ['Templates', 'Reusable models'],
-      tools: ['Tools', 'Calc · Pomodoro · Grades'],
-      review: ['Review', 'Weekly review'],
-      stats: ['Statistics', 'Metrics'],
-      archive: ['Archive', 'Closed items & projects'],
-      areas: ['Areas', 'Editable layers'],
-      settings: ['Settings', 'Theme · focus · about'],
-      personalization: ['Personalization', 'Vault · areas · kanban · pipeline · dashboard'],
-      accessibility: ['Accessibility', 'Toggle features'],
-      search: ['Search', 'Results'],
+      dashboard: ['view.dashboard', 'view.dashboard.sub'],
+      inbox: ['view.inbox', 'view.inbox.sub'],
+      today: ['view.today', 'view.today.sub'],
+      calendar: ['view.calendar', 'view.calendar.sub'],
+      timeline: ['view.timeline', 'view.timeline.sub'],
+      tasks: ['view.tasks', 'view.tasks.sub'],
+      overdue: ['view.overdue', 'view.overdue.sub'],
+      pinned: ['view.pinned', 'view.pinned.sub'],
+      blocked: ['view.blocked', 'view.blocked.sub'],
+      projects: ['view.projects', 'view.projects.sub'],
+      kanban: ['view.kanban', 'view.kanban.sub'],
+      clients: ['view.clients', 'view.clients.sub'],
+      vault: ['view.vault', 'view.vault.sub'],
+      contacts: ['view.contacts', 'view.contacts.sub'],
+      emails: ['view.emails', 'view.emails.sub'],
+      links: ['view.links', 'view.links.sub'],
+      subscriptions: ['view.subscriptions', 'view.subscriptions.sub'],
+      templates: ['view.templates', 'view.templates.sub'],
+      tools: ['view.tools', 'view.tools.sub'],
+      review: ['view.review', 'view.review.sub'],
+      stats: ['view.stats', 'view.stats.sub'],
+      archive: ['view.archive', 'view.archive.sub'],
+      areas: ['view.areas', 'view.areas.sub'],
+      settings: ['view.settings', 'view.settings.sub'],
+      personalization: ['view.personalization', 'view.personalization.sub'],
+      accessibility: ['view.accessibility', 'view.accessibility.sub'],
+      search: ['view.search', 'view.search.sub'],
     };
-    const [title, sub] = titles[view] || ['Candeias', ''];
-    document.getElementById('view-title').textContent = title;
-    document.getElementById('view-subtitle').textContent = sub;
+    const [titleKey, subKey] = titles[view] || ['', ''];
+    document.getElementById('view-title').textContent = titleKey ? I18n.t(titleKey) : 'Candeias';
+    document.getElementById('view-subtitle').textContent = subKey ? I18n.t(subKey) : '';
     const filterBar = document.getElementById('filter-bar');
     if (['tasks', 'calendar', 'timeline', 'inbox', 'contacts', 'emails', 'archive'].includes(view)) {
       filterBar.classList.remove('hidden');
@@ -424,6 +427,60 @@ const App = {
   hasArchiveDateFilters() {
     const f = this.archiveFilters;
     return f.timeRange !== 'all' || !!f.pickDate || !!f.pickMonth || !!f.pickYear;
+  },
+
+  filterProjectItems(items) {
+    const f = this.projectItemFilter || 'all';
+    if (f === 'open') return items.filter((i) => !i.completed);
+    if (f === 'done') return items.filter((i) => i.completed);
+    if (f === 'overdue') return items.filter((i) => Utils.isOverdue(i));
+    if (f === 'urgent') return items.filter((i) => i.priority === 'urgent' || i.priority === 'high');
+    return items;
+  },
+
+  sortProjectItems(items) {
+    const sort = this.projectItemSort || 'date-desc';
+    const priorityRank = { urgent: 0, high: 1, normal: 2, low: 3 };
+    return [...items].sort((a, b) => {
+      if (sort === 'urgency') {
+        const pa = priorityRank[a.priority] ?? 2;
+        const pb = priorityRank[b.priority] ?? 2;
+        if (pa !== pb) return pa - pb;
+        return (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '');
+      }
+      if (sort === 'title') return (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+      if (sort === 'due') {
+        const da = a.dueDate || '9999-12-31';
+        const db = b.dueDate || '9999-12-31';
+        if (da !== db) return da.localeCompare(db);
+        return (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '');
+      }
+      const ta = a.updatedAt || a.createdAt || '';
+      const tb = b.updatedAt || b.createdAt || '';
+      return sort === 'date-asc' ? ta.localeCompare(tb) : tb.localeCompare(ta);
+    });
+  },
+
+  renderProjectItemFilters() {
+    const filters = [
+      ['all', 'project.filter.all'],
+      ['open', 'project.filter.open'],
+      ['done', 'project.filter.done'],
+      ['overdue', 'project.filter.overdue'],
+      ['urgent', 'project.filter.urgent'],
+    ];
+    const sorts = [
+      ['date-desc', 'project.sort.newest'],
+      ['date-asc', 'project.sort.oldest'],
+      ['due', 'project.sort.due'],
+      ['urgency', 'project.sort.urgency'],
+      ['title', 'project.sort.title'],
+    ];
+    return `<div class="filter-row mb">
+      ${filters.map(([f, key]) => `<button class="filter-chip ${this.projectItemFilter === f ? 'active' : ''}" data-action="proj-item-filter" data-filter="${f}">${I18n.t(key)}</button>`).join('')}
+      <span class="filter-sep"></span>
+      ${sorts.map(([s, key]) => `<button class="filter-chip ${this.projectItemSort === s ? 'active' : ''}" data-action="proj-item-sort" data-sort="${s}">${I18n.t(key)}</button>`).join('')}
+    </div>`;
   },
 
   renderFilterBar() {
@@ -872,7 +929,7 @@ const App = {
       case 'toggle-pin': Store.togglePin(id); this.refresh(); break;
       case 'archive-item': Store.archiveItem(id); this.refresh(); break;
       case 'snooze-item': Store.snoozeItem(id, 1); this.refresh(); break;
-      case 'delete-item': if (confirm('Delete?')) { Store.deleteItem(id); this.refresh(); } break;
+      case 'delete-item': if (confirm(I18n.t('confirm.deleteItem'))) { Store.deleteItem(id); this.refresh(); } break;
       case 'classify-inbox': this.openQuickCapture(id); break;
       case 'clear-inbox-filters':
         this.inboxFilters = { type: 'all', priority: 'all', tag: null, timeRange: 'all', pickDate: '', pickMonth: '', pickYear: '' };
@@ -887,7 +944,7 @@ const App = {
       case 'back-projects': this.projectDetailId = null; this.render(); break;
       case 'extract-tasks': alert(`${Store.extractTasksFromNote(id).length} task(s) created.`); this.refresh(); break;
       case 'delete-item-modal':
-        if (confirm('Delete?')) { Store.deleteItem(id); this.closeModal(); this.refresh(); }
+        if (confirm(I18n.t('confirm.deleteItem'))) { Store.deleteItem(id); this.closeModal(); this.refresh(); }
         break;
       case 'delete-client-modal':
         if (confirm('Delete client? Projects will be unlinked.')) {
@@ -956,6 +1013,16 @@ const App = {
       case 'clear-focus': Store.state.settings.focusProjectId = null; Store.save(); this.refresh(); break;
       case 'dup-project': Store.duplicateProject(id); alert('Project duplicated!'); this.refresh(); break;
       case 'archive-project': Store.archiveProject(id); this.projectDetailId = null; this.refresh(); break;
+      case 'unarchive-project': Store.unarchiveProject(id); this.refresh(); break;
+      case 'unarchive-item': Store.unarchiveItem(id); this.refresh(); break;
+      case 'edit-project': this.openProjectModal(null, id); break;
+      case 'delete-project':
+        if (confirm(I18n.t('confirm.deleteProject'))) {
+          Store.deleteProject(id);
+          if (this.projectDetailId === id) this.projectDetailId = null;
+          this.refresh();
+        }
+        break;
       case 'add-proj-item': this.openItemModal(null, null, ds.pid); break;
       case 'add-project': this.openProjectModal(); break;
       case 'log-hours': { const h = parseFloat(prompt('Hours?')); if (h) { Store.logHours(id, h); this.refresh(); } } break;
@@ -1225,8 +1292,16 @@ const App = {
         break;
       }
       case 'set-theme': this.applyTheme(ds.theme); this.render(); break;
+      case 'set-language':
+        Store.state.settings.language = ds.language === 'pt' ? 'pt' : 'en';
+        Store.save();
+        I18n.apply();
+        this.render();
+        break;
       case 'save-search': { const name = prompt('Search name?'); if (name) { Store.addSavedSearch(name, { q: this.searchQuery, type: this.searchType }); alert('Saved!'); } } break;
       case 'proj-filter': this.projectFilter = ds.filter; this.render(); break;
+      case 'proj-item-filter': this.projectItemFilter = ds.filter; this.render(); break;
+      case 'proj-item-sort': this.projectItemSort = ds.sort; this.render(); break;
       case 'open-client': this.clientDetailId = id; this.clientTab = 'overview'; this.render(); break;
       case 'back-clients': this.clientDetailId = null; this.render(); break;
       case 'new-client': this.openClientModal(); break;

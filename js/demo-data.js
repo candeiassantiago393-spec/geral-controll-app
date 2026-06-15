@@ -239,6 +239,7 @@ function defaultState() {
     vaultUnlocked: false,
     settings: {
       theme: 'dark',
+      language: 'en',
       fullDemoLoaded: false,
       lastQuickCapture: { areaId: 'area-work', projectId: null, subContextId: null },
       focusProjectId: null,
@@ -295,6 +296,7 @@ function demoState() {
     vaultUnlocked: false,
     settings: {
       theme: 'dark',
+      language: 'en',
       fullDemoLoaded: true,
       lastQuickCapture: { areaId: 'area-work', projectId: 'proj-siemens-1', subContextId: null },
       focusProjectId: null,

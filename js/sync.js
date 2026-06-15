@@ -163,6 +163,39 @@ const CloudSync = {
     Store.state.settings.lastSyncMessage = message || '';
   },
 
+  _mergeEntityLists(localList, remoteList) {
+    const map = new Map();
+    for (const entry of [...(remoteList || []), ...(localList || [])]) {
+      if (!entry?.id) continue;
+      const prev = map.get(entry.id);
+      if (!prev) {
+        map.set(entry.id, entry);
+        continue;
+      }
+      const prevAt = prev.updatedAt || prev.createdAt || '';
+      const nextAt = entry.updatedAt || entry.createdAt || '';
+      map.set(entry.id, nextAt >= prevAt ? entry : prev);
+    }
+    return Array.from(map.values());
+  },
+
+  _mergeStates(localState, remoteState) {
+    if (!remoteState) return localState;
+    if (!localState) return remoteState;
+    return {
+      ...localState,
+      projects: this._mergeEntityLists(localState.projects, remoteState.projects),
+      items: this._mergeEntityLists(localState.items, remoteState.items),
+      clients: this._mergeEntityLists(localState.clients, remoteState.clients),
+      vaultEntries: this._mergeEntityLists(localState.vaultEntries, remoteState.vaultEntries),
+      subscriptions: this._mergeEntityLists(localState.subscriptions, remoteState.subscriptions),
+      grades: this._mergeEntityLists(localState.grades, remoteState.grades),
+      areas: (localState.areas?.length ? localState.areas : remoteState.areas) || [],
+      settings: { ...(remoteState.settings || {}), ...(localState.settings || {}) },
+      version: localState.version || remoteState.version || 3,
+    };
+  },
+
   _decideSync(localState, localAt, remoteState, remoteAt) {
     const localScore = this.dataScore(localState);
     const remoteScore = this.dataScore(remoteState);
@@ -189,6 +222,38 @@ const CloudSync = {
         message: `Uploaded to cloud (${localScore} records).`,
       };
     }
+
+    // More records wins — never discard a richer local copy because cloud has a newer timestamp.
+    if (localScore > remoteScore) {
+      return {
+        action: 'push',
+        state: localState,
+        updatedAt: localAt || now,
+        direction: 'push',
+        message: `This device has more data (${localScore} vs ${remoteScore}) — uploaded.`,
+      };
+    }
+    if (remoteScore > localScore) {
+      return {
+        action: 'pull',
+        state: remoteState,
+        updatedAt: remoteAt || now,
+        direction: 'pull',
+        message: `Cloud has more data (${remoteScore} vs ${localScore}) — downloaded.`,
+      };
+    }
+
+    if (localScore === remoteScore && localScore > 0) {
+      const merged = this._mergeStates(localState, remoteState);
+      return {
+        action: 'push',
+        state: merged,
+        updatedAt: now,
+        direction: 'push',
+        message: 'Merged both copies — uploaded.',
+      };
+    }
+
     if (!localAt || (remoteAt && remoteAt > localAt)) {
       return {
         action: 'pull',
@@ -205,24 +270,6 @@ const CloudSync = {
         updatedAt: localAt,
         direction: 'push',
         message: 'This device is newer — uploaded.',
-      };
-    }
-    if (remoteScore > localScore) {
-      return {
-        action: 'pull',
-        state: remoteState,
-        updatedAt: remoteAt || now,
-        direction: 'pull',
-        message: 'Cloud has more data — downloaded.',
-      };
-    }
-    if (localScore > remoteScore) {
-      return {
-        action: 'push',
-        state: localState,
-        updatedAt: localAt || now,
-        direction: 'push',
-        message: 'This device has more data — uploaded.',
       };
     }
     return { action: 'none', direction: 'none', message: 'Already in sync.' };
@@ -363,6 +410,13 @@ const CloudSync = {
   },
 
   _applyRemoteState(remoteState, remoteAt) {
+    const localScore = this.dataScore(Store.state);
+    const remoteScore = this.dataScore(remoteState);
+    if (localScore > remoteScore) {
+      console.warn(`CloudSync: blocked pull (${localScore} local vs ${remoteScore} cloud records)`);
+      this.pushToCloud({ force: true }).catch(() => {});
+      return;
+    }
     this.emergencyBackup();
     const migrated = migrateState(remoteState);
     migrated.cloudUpdatedAt = remoteAt;
@@ -460,9 +514,13 @@ const CloudSync = {
       if (res.changed && res.direction === 'pull' && res.state) {
         this._applyRemoteState(res.state, res.updatedAt || '');
       } else if (res.changed && res.direction === 'push') {
+        if (res.state) {
+          Store.state = migrateState(res.state);
+        }
         Store.state.cloudUpdatedAt = res.updatedAt || Store.state.cloudUpdatedAt;
         Store.save({ skipCloud: true });
         Store.state.settings.lastCloudSync = res.updatedAt;
+        if (typeof App !== 'undefined') App.refresh?.();
       }
       this._setSyncMeta(res.direction || 'none', res.message || '');
       return res;
@@ -481,8 +539,14 @@ const CloudSync = {
       return { changed: true, direction: 'pull', message: decision.message };
     }
     if (decision.action === 'push') {
+      if (decision.state) {
+        Store.state = migrateState(decision.state);
+        Store.state.cloudUpdatedAt = decision.updatedAt || new Date().toISOString();
+        Store.save({ skipCloud: true });
+      }
       await this.pushToCloud({ force: true });
       this._setSyncMeta('push', decision.message);
+      if (typeof App !== 'undefined') App.refresh?.();
       return { changed: true, direction: 'push', message: decision.message };
     }
     this._setSyncMeta('none', decision.message);
