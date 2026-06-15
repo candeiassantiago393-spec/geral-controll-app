@@ -218,6 +218,17 @@ const AppShell = {
   renderBottomNav(activeHub) {
     const nav = document.getElementById('bottom-nav');
     if (!nav) return;
+
+    const existing = nav.querySelector('[data-hub], .bottom-nav-fab');
+    if (existing) {
+      nav.querySelectorAll('[data-hub]').forEach((btn) => {
+        const active = btn.dataset.hub === activeHub;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-current', active ? 'page' : 'false');
+      });
+      return;
+    }
+
     const items = [
       { hub: 'library', primary: false },
       { hub: 'work', primary: false },

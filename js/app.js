@@ -51,6 +51,8 @@ const App = {
     CloudSync.init();
     I18n.apply();
     AppShell.bindEvents();
+    this.bindContentDelegation();
+    this.bindFilterBarDelegation();
     this.offerClearDemoIfNeeded();
     this.renderWorkspaceBar();
     this.renderAreaFilters();
@@ -379,7 +381,13 @@ const App = {
       document.getElementById('sidebar-backdrop')?.classList.remove('open');
     };
 
-    if (view === prevView && !opts.force) return;
+    if (view === prevView && !opts.force) {
+      if (view === 'projects' && opts.projectId && opts.projectId !== this.projectDetailId) {
+        this.openProject(opts.projectId);
+        return;
+      }
+      return;
+    }
 
     const kind = opts.skipTransition
       ? null
@@ -582,128 +590,10 @@ const App = {
         ${f.pickDate || f.pickMonth || f.pickYear ? `<button class="filter-chip" data-archive-clear-time>✕ Clear date</button>` : ''}
         ${this.hasArchiveDateFilters() ? `<span class="filter-sep"></span><button class="filter-chip" data-action="clear-archive-filters">Clear filters</button>` : ''}`;
     }
-    this.bindFilterBar(bar);
   },
 
-  bindFilterBar(bar) {
-    bar.querySelectorAll('[data-period]').forEach((el) => el.addEventListener('click', () => { this.filters.period = el.dataset.period; this.taskFilter = 'all'; this.refresh(); }));
-    bar.querySelectorAll('[data-task-filter]').forEach((el) => el.addEventListener('click', () => { this.taskFilter = el.dataset.taskFilter; this.refresh(); }));
-    bar.querySelectorAll('[data-tag]').forEach((el) => el.addEventListener('click', () => { this.filters.tag = el.dataset.tag || null; this.refresh(); }));
-    bar.querySelectorAll('[data-calmode]').forEach((el) => el.addEventListener('click', () => { this.filters.calMode = el.dataset.calmode; this.refresh(); }));
-    bar.querySelectorAll('[data-calview]').forEach((el) => el.addEventListener('click', () => { this.calView = el.dataset.calview; this.refresh(); }));
-    bar.querySelectorAll('[data-action="edit-school-schedule"]').forEach((el) => el.addEventListener('click', () => this.openSchoolScheduleModal()));
-    bar.querySelectorAll('[data-inbox-type]').forEach((el) => el.addEventListener('click', () => {
-      this.inboxFilters.type = el.dataset.inboxType;
-      this.refresh();
-    }));
-    bar.querySelectorAll('[data-inbox-priority]').forEach((el) => el.addEventListener('click', () => {
-      this.inboxFilters.priority = el.dataset.inboxPriority;
-      this.refresh();
-    }));
-    bar.querySelectorAll('[data-inbox-time]').forEach((el) => el.addEventListener('click', () => {
-      this.inboxFilters.timeRange = el.dataset.inboxTime;
-      this.inboxFilters.pickDate = '';
-      this.inboxFilters.pickMonth = '';
-      this.inboxFilters.pickYear = '';
-      this.refresh();
-    }));
-    bar.querySelectorAll('[data-inbox-tag]').forEach((el) => el.addEventListener('click', () => {
-      const tag = el.dataset.inboxTag;
-      this.inboxFilters.tag = this.inboxFilters.tag === tag ? null : tag;
-      this.refresh();
-    }));
-    bar.querySelectorAll('[data-inbox-clear-time]').forEach((el) => el.addEventListener('click', () => {
-      this.inboxFilters.pickDate = '';
-      this.inboxFilters.pickMonth = '';
-      this.inboxFilters.pickYear = '';
-      this.inboxFilters.timeRange = 'all';
-      this.refresh();
-    }));
-    const pickDate = bar.querySelector('#inbox-pick-date');
-    const pickMonth = bar.querySelector('#inbox-pick-month');
-    const pickYear = bar.querySelector('#inbox-pick-year');
-    pickDate?.addEventListener('change', () => {
-      this.inboxFilters.pickDate = pickDate.value;
-      this.inboxFilters.pickMonth = '';
-      this.inboxFilters.pickYear = '';
-      this.inboxFilters.timeRange = 'all';
-      this.refresh();
-    });
-    pickMonth?.addEventListener('change', () => {
-      this.inboxFilters.pickMonth = pickMonth.value;
-      this.inboxFilters.pickDate = '';
-      this.inboxFilters.pickYear = '';
-      this.inboxFilters.timeRange = 'all';
-      this.refresh();
-    });
-    pickYear?.addEventListener('change', () => {
-      this.inboxFilters.pickYear = pickYear.value;
-      this.inboxFilters.pickDate = '';
-      this.inboxFilters.pickMonth = '';
-      this.inboxFilters.timeRange = 'all';
-      this.refresh();
-    });
-    bar.querySelectorAll('[data-archive-time]').forEach((el) => el.addEventListener('click', () => {
-      this.archiveFilters.timeRange = el.dataset.archiveTime;
-      this.archiveFilters.pickDate = '';
-      this.archiveFilters.pickMonth = '';
-      this.archiveFilters.pickYear = '';
-      this.refresh();
-    }));
-    bar.querySelectorAll('[data-archive-clear-time]').forEach((el) => el.addEventListener('click', () => {
-      this.archiveFilters.pickDate = '';
-      this.archiveFilters.pickMonth = '';
-      this.archiveFilters.pickYear = '';
-      this.archiveFilters.timeRange = 'all';
-      this.refresh();
-    }));
-    const archivePickDate = bar.querySelector('#archive-pick-date');
-    const archivePickMonth = bar.querySelector('#archive-pick-month');
-    const archivePickYear = bar.querySelector('#archive-pick-year');
-    archivePickDate?.addEventListener('change', () => {
-      this.archiveFilters.pickDate = archivePickDate.value;
-      this.archiveFilters.pickMonth = '';
-      this.archiveFilters.pickYear = '';
-      this.archiveFilters.timeRange = 'all';
-      this.refresh();
-    });
-    archivePickMonth?.addEventListener('change', () => {
-      this.archiveFilters.pickMonth = archivePickMonth.value;
-      this.archiveFilters.pickDate = '';
-      this.archiveFilters.pickYear = '';
-      this.archiveFilters.timeRange = 'all';
-      this.refresh();
-    });
-    archivePickYear?.addEventListener('change', () => {
-      this.archiveFilters.pickYear = archivePickYear.value;
-      this.archiveFilters.pickDate = '';
-      this.archiveFilters.pickMonth = '';
-      this.archiveFilters.timeRange = 'all';
-      this.refresh();
-    });
-    bar.querySelectorAll('[data-contact-group]').forEach((el) => {
-      el.addEventListener('click', () => {
-        this.contactFilter = el.dataset.contactGroup;
-        this.refresh();
-      });
-    });
-    bar.querySelectorAll('[data-email-filter]').forEach((el) => {
-      el.addEventListener('click', () => {
-        this.emailFilter = el.dataset.emailFilter;
-        this.refresh();
-      });
-    });
-    const contactSearch = bar.querySelector('#contact-search');
-    contactSearch?.addEventListener('input', () => {
-      this.contactSearch = contactSearch.value;
-      this.render();
-    });
-    bar.querySelectorAll('[data-action="manage-contact-groups"]').forEach((el) => {
-      el.addEventListener('click', () => {
-        this.personalizationTab = 'contacts';
-        this.navigate('personalization');
-      });
-    });
+  bindFilterBar() {
+    /* Delegação em bindFilterBarDelegation — chamado uma vez no init. */
   },
 
   filterCalItems(items) {
@@ -848,93 +738,393 @@ const App = {
     this.bindContentEvents();
   },
 
-  bindContentEvents() {
-    document.querySelectorAll('[data-action]').forEach((el) => {
-      el.addEventListener('click', (e) => {
+  openProject(id) {
+    if (!id || !Store.getProject(id)) return;
+    this.projectDetailId = id;
+    this.currentHub = 'projects';
+    if (this.currentView !== 'projects') {
+      this.navigate('projects', { skipTransition: true, force: true });
+      return;
+    }
+    const content = document.getElementById('content');
+    if (content) content.classList.add('content-loading');
+    requestAnimationFrame(() => {
+      this.render();
+      AppShell.render();
+      content?.classList.remove('content-loading');
+      content?.scrollTo?.({ top: 0, behavior: 'auto' });
+    });
+  },
+
+  openClient(id) {
+    if (!id || !Store.getClient(id)) return;
+    this.clientDetailId = id;
+    this.clientTab = 'overview';
+    this.currentHub = 'projects';
+    if (this.currentView !== 'clients') {
+      this.navigate('clients', { skipTransition: true, force: true });
+      return;
+    }
+    const content = document.getElementById('content');
+    if (content) content.classList.add('content-loading');
+    requestAnimationFrame(() => {
+      this.render();
+      AppShell.render();
+      content?.classList.remove('content-loading');
+      content?.scrollTo?.({ top: 0, behavior: 'auto' });
+    });
+  },
+
+  bindContentDelegation() {
+    const root = document.getElementById('content-stage') || document.getElementById('content');
+    if (!root || root.dataset.delegationBound) return;
+    root.dataset.delegationBound = '1';
+
+    root.addEventListener('click', (e) => {
+      const kanbanMove = e.target.closest('[data-kanban-move]');
+      if (kanbanMove && root.contains(kanbanMove)) {
+        e.stopPropagation();
+        Store.updateItem(kanbanMove.dataset.id, { kanbanStatus: kanbanMove.dataset.kanbanMove });
+        this.refresh();
+        return;
+      }
+
+      const actionEl = e.target.closest('[data-action]');
+      if (actionEl && root.contains(actionEl)) {
         e.preventDefault();
         e.stopPropagation();
-        this.handleAction(el.dataset.action, el.dataset);
-      });
-    });
-    document.querySelectorAll('[data-cal-day]').forEach((el) => {
-      el.addEventListener('click', () => { this.selectedCalDay = el.dataset.calDay; this.render(); });
-    });
-    document.querySelectorAll('.tab[data-tab]').forEach((el) => {
-      el.addEventListener('click', () => { this.projectTab = el.dataset.tab; this.render(); });
-    });
-    document.querySelectorAll('[data-client-tab]').forEach((el) => {
-      el.addEventListener('click', () => { this.clientTab = el.dataset.clientTab; this.render(); });
-    });
-    document.querySelectorAll('[data-client-filter]').forEach((el) => {
-      el.addEventListener('click', () => { this.clientFilter = el.dataset.clientFilter; this.render(); });
-    });
-    document.querySelectorAll('[data-kanban-move]').forEach((el) => {
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); Store.updateItem(el.dataset.id, { kanbanStatus: el.dataset.kanbanMove }); this.refresh(); });
-    });
-    document.querySelectorAll('[data-vault-folder]').forEach((el) => {
-      el.addEventListener('click', () => { this.vaultFolder = el.dataset.vaultFolder; this.render(); });
-    });
-    document.querySelectorAll('[data-personal-tab]').forEach((el) => {
-      el.addEventListener('click', () => { this.personalizationTab = el.dataset.personalTab; this.render(); });
-    });
-    document.getElementById('new-quick-tag')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') document.querySelector('[data-action="add-quick-tag"]')?.click();
-    });
-    document.getElementById('cal-prev')?.addEventListener('click', () => {
-      if (this.currentView === 'calendar' && (this.filters.calMode === 'school' || this.calView === 'week')) {
+        this.handleAction(actionEl.dataset.action, actionEl.dataset);
+        return;
+      }
+
+      const calDay = e.target.closest('[data-cal-day]');
+      if (calDay && root.contains(calDay)) {
+        this.selectedCalDay = calDay.dataset.calDay;
+        this.render();
+        return;
+      }
+
+      const tab = e.target.closest('.tab[data-tab]');
+      if (tab && root.contains(tab)) {
+        this.projectTab = tab.dataset.tab;
+        this.render();
+        return;
+      }
+
+      const clientTab = e.target.closest('[data-client-tab]');
+      if (clientTab && root.contains(clientTab)) {
+        this.clientTab = clientTab.dataset.clientTab;
+        this.render();
+        return;
+      }
+
+      const clientFilter = e.target.closest('[data-client-filter]');
+      if (clientFilter && root.contains(clientFilter)) {
+        this.clientFilter = clientFilter.dataset.clientFilter;
+        this.render();
+        return;
+      }
+
+      const vaultFolder = e.target.closest('[data-vault-folder]');
+      if (vaultFolder && root.contains(vaultFolder)) {
+        this.vaultFolder = vaultFolder.dataset.vaultFolder;
+        this.render();
+        return;
+      }
+
+      const personalTab = e.target.closest('[data-personal-tab]');
+      if (personalTab && root.contains(personalTab)) {
+        this.personalizationTab = personalTab.dataset.personalTab;
+        this.render();
+        return;
+      }
+
+      const toolsTab = e.target.closest('[data-tools-tab]');
+      if (toolsTab && root.contains(toolsTab)) {
+        this.toolsTab = toolsTab.dataset.toolsTab;
+        this.render();
+        return;
+      }
+
+      if (e.target.id === 'cal-prev' || e.target.closest('#cal-prev')) {
+        if (this.currentView === 'calendar' && (this.filters.calMode === 'school' || this.calView === 'week')) {
+          this.calendarDate.setDate(this.calendarDate.getDate() - 7);
+        } else this.calendarDate.setMonth(this.calendarDate.getMonth() - 1);
+        this.render();
+        return;
+      }
+      if (e.target.id === 'cal-next' || e.target.closest('#cal-next')) {
+        if (this.currentView === 'calendar' && (this.filters.calMode === 'school' || this.calView === 'week')) {
+          this.calendarDate.setDate(this.calendarDate.getDate() + 7);
+        } else this.calendarDate.setMonth(this.calendarDate.getMonth() + 1);
+        this.render();
+        return;
+      }
+      if (e.target.id === 'cal-today' || e.target.closest('#cal-today')) {
+        this.calendarDate = new Date();
+        this.selectedCalDay = Utils.todayStr();
+        this.render();
+        return;
+      }
+      if (e.target.id === 'tl-prev' || e.target.closest('#tl-prev')) {
         this.calendarDate.setDate(this.calendarDate.getDate() - 7);
-      } else this.calendarDate.setMonth(this.calendarDate.getMonth() - 1);
-      this.render();
-    });
-    document.getElementById('cal-next')?.addEventListener('click', () => {
-      if (this.currentView === 'calendar' && (this.filters.calMode === 'school' || this.calView === 'week')) {
+        this.render();
+        return;
+      }
+      if (e.target.id === 'tl-next' || e.target.closest('#tl-next')) {
         this.calendarDate.setDate(this.calendarDate.getDate() + 7);
-      } else this.calendarDate.setMonth(this.calendarDate.getMonth() + 1);
-      this.render();
+        this.render();
+        return;
+      }
+      if (e.target.id === 'vault-lock' || e.target.closest('#vault-lock')) {
+        Vault.lock();
+        this.render();
+        return;
+      }
+      if (e.target.id === 'btn-add-vault' || e.target.closest('#btn-add-vault')) {
+        this.openVaultModal();
+        return;
+      }
+      if (e.target.id === 'btn-add-project' || e.target.closest('#btn-add-project')) {
+        this.openProjectModal();
+        return;
+      }
+      if (e.target.id === 'btn-add-area' || e.target.closest('#btn-add-area')) {
+        this.openAreaModal();
+        return;
+      }
+
+      this.bindToolsCalcClick(e);
     });
-    document.getElementById('cal-today')?.addEventListener('click', () => { this.calendarDate = new Date(); this.selectedCalDay = Utils.todayStr(); this.render(); });
-    document.getElementById('tl-prev')?.addEventListener('click', () => { this.calendarDate.setDate(this.calendarDate.getDate() - 7); this.render(); });
-    document.getElementById('tl-next')?.addEventListener('click', () => { this.calendarDate.setDate(this.calendarDate.getDate() + 7); this.render(); });
-    document.getElementById('kanban-proj-filter')?.addEventListener('change', (e) => { this.filters.projectId = e.target.value || null; this.render(); });
-    document.getElementById('focus-select')?.addEventListener('change', (e) => { Store.state.settings.focusProjectId = e.target.value || null; Store.save(); });
-    document.getElementById('vault-unlock-form')?.addEventListener('submit', async (e) => {
+
+    root.addEventListener('change', (e) => {
+      if (e.target.id === 'kanban-proj-filter') {
+        this.filters.projectId = e.target.value || null;
+        this.render();
+      }
+      if (e.target.id === 'focus-select') {
+        Store.state.settings.focusProjectId = e.target.value || null;
+        Store.save();
+      }
+    });
+
+    root.addEventListener('submit', async (e) => {
+      if (e.target.id !== 'vault-unlock-form') return;
       e.preventDefault();
-      const pw = document.getElementById('vault-password').value;
+      const pw = document.getElementById('vault-password')?.value;
       if (!Vault.isSetup()) await Vault.setupMasterPassword(pw);
       else if (!(await Vault.unlock(pw))) { alert('Incorrect password'); return; }
       this.render();
     });
-    document.getElementById('vault-lock')?.addEventListener('click', () => { Vault.lock(); this.render(); });
-    document.getElementById('btn-add-vault')?.addEventListener('click', () => this.openVaultModal());
-    document.getElementById('btn-add-project')?.addEventListener('click', () => this.openProjectModal());
-    document.getElementById('btn-add-area')?.addEventListener('click', () => this.openAreaModal());
-    this.bindToolsCalc();
-    document.querySelectorAll('[data-tools-tab]').forEach((el) => {
-      el.addEventListener('click', () => { this.toolsTab = el.dataset.toolsTab; this.render(); });
+
+    root.addEventListener('keydown', (e) => {
+      if (e.target.id === 'new-quick-tag' && e.key === 'Enter') {
+        document.querySelector('[data-action="add-quick-tag"]')?.click();
+      }
     });
   },
 
-  bindToolsCalc() {
-    document.getElementById('calc-vdrop')?.addEventListener('click', () => {
-      const I = parseFloat(document.getElementById('calc-i').value);
-      const R = parseFloat(document.getElementById('calc-r').value);
-      const L = parseFloat(document.getElementById('calc-l').value);
+  bindFilterBarDelegation() {
+    const bar = document.getElementById('filter-bar');
+    if (!bar || bar.dataset.delegationBound) return;
+    bar.dataset.delegationBound = '1';
+
+    bar.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-period], [data-task-filter], [data-tag], [data-calmode], [data-calview], [data-inbox-type], [data-inbox-priority], [data-inbox-time], [data-inbox-tag], [data-inbox-clear-time], [data-archive-time], [data-archive-clear-time], [data-contact-group], [data-email-filter], [data-action]');
+      if (!el) return;
+
+      if (el.dataset.period !== undefined) {
+        this.filters.period = el.dataset.period;
+        this.taskFilter = 'all';
+        this.refresh();
+        return;
+      }
+      if (el.dataset.taskFilter !== undefined) {
+        this.taskFilter = el.dataset.taskFilter;
+        this.refresh();
+        return;
+      }
+      if (el.dataset.tag !== undefined) {
+        this.filters.tag = el.dataset.tag || null;
+        this.refresh();
+        return;
+      }
+      if (el.dataset.calmode) {
+        this.filters.calMode = el.dataset.calmode;
+        this.refresh();
+        return;
+      }
+      if (el.dataset.calview) {
+        this.calView = el.dataset.calview;
+        this.refresh();
+        return;
+      }
+      if (el.dataset.action === 'edit-school-schedule') {
+        this.openSchoolScheduleModal();
+        return;
+      }
+      if (el.dataset.inboxType) {
+        this.inboxFilters.type = el.dataset.inboxType;
+        this.refresh();
+        return;
+      }
+      if (el.dataset.inboxPriority) {
+        this.inboxFilters.priority = el.dataset.inboxPriority;
+        this.refresh();
+        return;
+      }
+      if (el.dataset.inboxTime) {
+        this.inboxFilters.timeRange = el.dataset.inboxTime;
+        this.inboxFilters.pickDate = '';
+        this.inboxFilters.pickMonth = '';
+        this.inboxFilters.pickYear = '';
+        this.refresh();
+        return;
+      }
+      if (el.dataset.inboxTag) {
+        const tag = el.dataset.inboxTag;
+        this.inboxFilters.tag = this.inboxFilters.tag === tag ? null : tag;
+        this.refresh();
+        return;
+      }
+      if (el.hasAttribute('data-inbox-clear-time')) {
+        this.inboxFilters.pickDate = '';
+        this.inboxFilters.pickMonth = '';
+        this.inboxFilters.pickYear = '';
+        this.inboxFilters.timeRange = 'all';
+        this.refresh();
+        return;
+      }
+      if (el.dataset.archiveTime) {
+        this.archiveFilters.timeRange = el.dataset.archiveTime;
+        this.archiveFilters.pickDate = '';
+        this.archiveFilters.pickMonth = '';
+        this.archiveFilters.pickYear = '';
+        this.refresh();
+        return;
+      }
+      if (el.hasAttribute('data-archive-clear-time')) {
+        this.archiveFilters.pickDate = '';
+        this.archiveFilters.pickMonth = '';
+        this.archiveFilters.pickYear = '';
+        this.archiveFilters.timeRange = 'all';
+        this.refresh();
+        return;
+      }
+      if (el.dataset.action === 'clear-archive-filters') {
+        this.archiveFilters = { timeRange: 'all', pickDate: '', pickMonth: '', pickYear: '' };
+        this.refresh();
+        return;
+      }
+      if (el.dataset.contactGroup) {
+        this.contactFilter = el.dataset.contactGroup;
+        this.refresh();
+        return;
+      }
+      if (el.dataset.emailFilter) {
+        this.emailFilter = el.dataset.emailFilter;
+        this.refresh();
+        return;
+      }
+      if (el.dataset.action === 'manage-contact-groups') {
+        this.personalizationTab = 'contacts';
+        this.navigate('personalization');
+        return;
+      }
+      if (el.dataset.action === 'manage-email-accounts') {
+        this.personalizationTab = 'emails';
+        this.navigate('personalization');
+        return;
+      }
+      if (el.dataset.action === 'refresh-all-gmail') {
+        this.refreshAllGmailAccounts(true);
+      }
+    });
+
+    bar.addEventListener('input', (e) => {
+      if (e.target.id === 'contact-search') {
+        this.contactSearch = e.target.value;
+        this.render();
+      }
+    });
+
+    bar.addEventListener('change', (e) => {
+      if (e.target.id === 'inbox-pick-date') {
+        this.inboxFilters.pickDate = e.target.value;
+        this.inboxFilters.pickMonth = '';
+        this.inboxFilters.pickYear = '';
+        this.inboxFilters.timeRange = 'all';
+        this.refresh();
+      }
+      if (e.target.id === 'inbox-pick-month') {
+        this.inboxFilters.pickMonth = e.target.value;
+        this.inboxFilters.pickDate = '';
+        this.inboxFilters.pickYear = '';
+        this.inboxFilters.timeRange = 'all';
+        this.refresh();
+      }
+      if (e.target.id === 'inbox-pick-year') {
+        this.inboxFilters.pickYear = e.target.value;
+        this.inboxFilters.pickDate = '';
+        this.inboxFilters.pickMonth = '';
+        this.inboxFilters.timeRange = 'all';
+        this.refresh();
+      }
+      if (e.target.id === 'archive-pick-date') {
+        this.archiveFilters.pickDate = e.target.value;
+        this.archiveFilters.pickMonth = '';
+        this.archiveFilters.pickYear = '';
+        this.archiveFilters.timeRange = 'all';
+        this.refresh();
+      }
+      if (e.target.id === 'archive-pick-month') {
+        this.archiveFilters.pickMonth = e.target.value;
+        this.archiveFilters.pickDate = '';
+        this.archiveFilters.pickYear = '';
+        this.archiveFilters.timeRange = 'all';
+        this.refresh();
+      }
+      if (e.target.id === 'archive-pick-year') {
+        this.archiveFilters.pickYear = e.target.value;
+        this.archiveFilters.pickDate = '';
+        this.archiveFilters.pickMonth = '';
+        this.archiveFilters.timeRange = 'all';
+        this.refresh();
+      }
+    });
+  },
+
+  bindToolsCalcClick(e) {
+    const run = (id, fn) => {
+      if (e.target.id === id || e.target.closest(`#${id}`)) fn();
+    };
+    run('calc-vdrop', () => {
+      const I = parseFloat(document.getElementById('calc-i')?.value);
+      const R = parseFloat(document.getElementById('calc-r')?.value);
+      const L = parseFloat(document.getElementById('calc-l')?.value);
       const out = document.getElementById('calc-vdrop-out');
-      if (I && R && L) out.textContent = `ΔV = ${EngCalc.voltageDrop(I, R, L)} V`;
+      if (I && R && L && out) out.textContent = `ΔV = ${EngCalc.voltageDrop(I, R, L)} V`;
     });
-    document.getElementById('calc-awg-btn')?.addEventListener('click', () => {
-      const awg = parseInt(document.getElementById('calc-awg').value, 10);
-      document.getElementById('calc-awg-out').textContent = `${awg} AWG ≈ ${EngCalc.awgToMm2(awg)} mm²`;
+    run('calc-awg-btn', () => {
+      const awg = parseInt(document.getElementById('calc-awg')?.value, 10);
+      const out = document.getElementById('calc-awg-out');
+      if (out) out.textContent = `${awg} AWG ≈ ${EngCalc.awgToMm2(awg)} mm²`;
     });
-    document.getElementById('calc-kw-btn')?.addEventListener('click', () => {
-      const kw = parseFloat(document.getElementById('calc-kw').value);
-      document.getElementById('calc-kw-out').textContent = kw ? `${kw} kW = ${EngCalc.kwToCv(kw)} cv` : '—';
+    run('calc-kw-btn', () => {
+      const kw = parseFloat(document.getElementById('calc-kw')?.value);
+      const out = document.getElementById('calc-kw-out');
+      if (out) out.textContent = kw ? `${kw} kW = ${EngCalc.kwToCv(kw)} cv` : '—';
     });
-    document.getElementById('calc-cos')?.addEventListener('click', () => {
-      const kva = parseFloat(document.getElementById('calc-kva').value);
-      const kw = parseFloat(document.getElementById('calc-kw2').value);
-      document.getElementById('calc-cos-out').textContent = `cos φ = ${EngCalc.powerFactor(kva, kw)}`;
+    run('calc-cos', () => {
+      const kva = parseFloat(document.getElementById('calc-kva')?.value);
+      const kw = parseFloat(document.getElementById('calc-kw2')?.value);
+      const out = document.getElementById('calc-cos-out');
+      if (out) out.textContent = `cos φ = ${EngCalc.powerFactor(kva, kw)}`;
     });
+  },
+
+  bindContentEvents() {
+    /* Delegação em bindContentDelegation — chamado uma vez no init. */
   },
 
   async handleAction(action, ds) {
@@ -964,7 +1154,7 @@ const App = {
         this.refresh();
         break;
       case 'quick-ultra': this.openQuickCapture(null, true); break;
-      case 'open-project': this.projectDetailId = id; this.navigate('projects'); break;
+      case 'open-project': this.openProject(id); break;
       case 'back-projects': this.projectDetailId = null; this.render(); break;
       case 'extract-tasks': alert(`${Store.extractTasksFromNote(id).length} task(s) created.`); this.refresh(); break;
       case 'delete-item-modal':
@@ -1326,7 +1516,7 @@ const App = {
       case 'proj-filter': this.projectFilter = ds.filter; this.render(); break;
       case 'proj-item-filter': this.projectItemFilter = ds.filter; this.render(); break;
       case 'proj-item-sort': this.projectItemSort = ds.sort; this.render(); break;
-      case 'open-client': this.clientDetailId = id; this.clientTab = 'overview'; this.render(); break;
+      case 'open-client': this.openClient(id); break;
       case 'back-clients': this.clientDetailId = null; this.render(); break;
       case 'new-client': this.openClientModal(); break;
       case 'edit-client': this.openClientModal(id); break;

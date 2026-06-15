@@ -1000,14 +1000,12 @@ const AppViews = {
       ${Object.entries(grouped).map(([areaId, projs]) => {
         const area = Store.getArea(areaId);
         return `<div class="mb-lg"><h3 class="sub-heading">${area?.icon} ${Utils.esc(area?.name)}</h3><div class="card-grid">
-          ${projs.map((p) => `<div class="project-card">
-            <div data-action="open-project" data-id="${p.id}" style="cursor:pointer">
+          ${projs.map((p) => `<div class="project-card" data-action="open-project" data-id="${p.id}" style="cursor:pointer">
             <div class="project-header"><div class="project-color" style="background:${p.color}"></div>
             <div><div class="project-name">${Utils.esc(p.name)}</div><div class="project-client">${Utils.esc(p.client)} ${p.stack?`· ${Utils.esc(p.stack)}`:''}</div></div></div>
             ${p.pipeline?`<span class="pipeline-badge">${Utils.esc(p.pipeline)}</span>`:''}
             ${p.paymentStatus?`<span class="tag">${Utils.esc(p.paymentStatus)}</span>`:''}
             <div class="muted mt">${Store.getItems({projectId:p.id}).length} items · ${p.loggedHours||0}/${p.estimatedHours||'?'}h</div>
-            </div>
             ${showArchived ? `<div class="item-actions mt">
               <button class="btn btn-sm" data-action="edit-project" data-id="${p.id}">${I18n.t('action.edit')}</button>
               <button class="btn btn-sm btn-ghost" data-action="unarchive-project" data-id="${p.id}">${I18n.t('action.restore')}</button>

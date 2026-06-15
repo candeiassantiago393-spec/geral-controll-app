@@ -640,7 +640,7 @@ const AppModals = {
       results.querySelectorAll('.cmd-item[data-cmd]').forEach((el) => el.addEventListener('click', () => {
         this.closeModal();
         if (el.dataset.cmd === 'item') this.openItemModal(el.dataset.id);
-        if (el.dataset.cmd === 'project') { App.projectDetailId = el.dataset.id; App.navigate('projects'); }
+        if (el.dataset.cmd === 'project') App.openProject(el.dataset.id);
       }));
       results.querySelectorAll('[data-cmd-action]').forEach((el) => el.addEventListener('click', () => {
         this.closeModal();

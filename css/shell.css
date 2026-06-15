@@ -307,6 +307,12 @@ body {
   -webkit-overflow-scrolling: touch;
   transform: none;
   will-change: auto;
+  transition: opacity 0.12s ease;
+}
+
+.content-stage .content.content-loading {
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 @keyframes pageExitLeft {
