@@ -556,7 +556,6 @@
   }
 
   .filter-date-wrap { flex-shrink: 0; }
-  .filter-date-input { font-size: 13px; }
 
   .personalization-tabs {
     flex-wrap: nowrap;
@@ -621,10 +620,6 @@
 
   .search-box {
     padding: 7px 8px;
-  }
-
-  .search-box input {
-    font-size: 12px;
   }
 
   .workspace-bar,
@@ -706,6 +701,29 @@
 
 /* Touch devices — iPhone, iPad touch */
 @media (hover: none) and (pointer: coarse) {
+  html {
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body,
+  .app-shell,
+  .main,
+  .content-stage,
+  .content {
+    touch-action: manipulation;
+  }
+
+  input,
+  select,
+  textarea,
+  .search-box input,
+  .filter-date-input,
+  .contact-search {
+    font-size: 16px;
+  }
+
   .item-actions { opacity: 1; }
 
   .nav-item,

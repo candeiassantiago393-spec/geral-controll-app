@@ -285,6 +285,19 @@ const AppShell = {
     /* Desativado no telemóvel — conflitava com scroll horizontal (timeline, kanban). */
   },
 
+  bindMobileZoomLock() {
+    if (!window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+
+    const blockGesture = (e) => e.preventDefault();
+    document.addEventListener('gesturestart', blockGesture, { passive: false });
+    document.addEventListener('gesturechange', blockGesture, { passive: false });
+    document.addEventListener('gestureend', blockGesture, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+  },
+
   bindEvents() {
     document.getElementById('btn-header-profile')?.addEventListener('click', () => App.navigate('settings', { source: 'hub' }));
     document.getElementById('btn-notif')?.addEventListener('click', () => {
@@ -298,6 +311,7 @@ const AppShell = {
     });
     document.getElementById('btn-header-search')?.addEventListener('click', () => App.openCommandPalette());
     this.bindSwipe();
+    this.bindMobileZoomLock();
     window.addEventListener('resize', () => {
       if (AppShell.useTabIndicator()) AppShell.updateTabIndicator();
     });
