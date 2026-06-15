@@ -11,3 +11,5 @@ backups/*.json
 backups/*.json.enc
 data/cloud/*.json
 !data/cloud/.gitkeep
+!data/cloud/backups/.gitkeep
+data/cloud/backups/*.json

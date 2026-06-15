@@ -83,8 +83,10 @@ const AppViews = {
 
     let html = App.renderScopeBanner();
     if (show('banners')) {
+      const emptyScore = typeof CloudSync !== 'undefined' ? CloudSync.dataScore(Store.state) : 0;
       html += `${stats.overdue > 0 ? `<div class="overdue-banner">⚠ ${stats.overdue} overdue task(s) · <a href="#" data-action="nav" data-view="overdue">View all</a></div>` : ''}
       ${stats.inbox > 0 ? `<div class="info-banner">📥 ${stats.inbox} no Inbox · <a href="#" data-action="nav" data-view="inbox">Classify</a></div>` : ''}
+      ${emptyScore === 0 ? `<div class="overdue-banner" style="border-color:#f59e0b">⚠ App looks empty · <a href="#" data-action="restore-my-data">Recover my data</a></div>` : ''}
       ${Store.state.settings.fullDemoLoaded ? `<div class="info-banner" style="opacity:0.85">💡 Demo data loaded · <a href="#" data-action="clear-all-data">Clear and start fresh</a></div>` : ''}`;
     }
     if (show('stats')) {
@@ -1146,9 +1148,18 @@ const AppViews = {
         <p class="muted mb">${CloudSync.isRenderMode?.() ? 'Render password login · auto-sync every 30s. Face ID unlocks on this device.' : CloudSync.isConfigured() ? 'Cloud login syncs across devices. Face ID works on this device.' : 'Local login on this device only — enable cloud sync above.'}</p>
         <button class="btn btn-sm btn-ghost danger-left" data-action="logout">Sign out</button></div>
       <div class="settings-box mb"><h3>Data</h3>
-        <p class="muted mb sm">Start empty or remove example data still on this device.</p>
+        <p class="muted mb sm">${typeof CloudSync !== 'undefined' ? `${CloudSync.dataScore(Store.state)} records on this device` : ''}${CloudSync.hasEmergencyBackup?.() ? ' · local backup available' : ''}</p>
+        <div class="btn-row mb">
+          <button class="btn btn-sm btn-primary" data-action="restore-my-data">↺ Recover my data</button>
+          <button class="btn btn-sm" data-action="cloud-sync-now">Sync now</button>
+        </div>
+        <p class="muted mb sm">Recover tries: local backup → cloud backup → cloud sync. Export weekly for safety.</p>
         <div class="btn-row">
-          <button class="btn btn-sm btn-primary" data-action="clear-all-data">🗑 Clear all — start fresh</button>
+          <button class="btn btn-sm" data-action="export-backup">⬇ Export backup</button>
+          <button class="btn btn-sm" data-action="import-backup">⬆ Import backup</button>
+        </div>
+        <div class="btn-row mt">
+          <button class="btn btn-sm btn-ghost" data-action="clear-all-data">🗑 Clear all — start fresh</button>
           <button class="btn btn-sm btn-ghost" data-action="load-demo">↺ Load demo examples</button>
         </div></div>
       <div class="settings-box about-box"><div class="brand-icon lg">C</div><h2>Candeias</h2><p class="green">candeias.dev</p>

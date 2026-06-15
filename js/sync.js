@@ -5,8 +5,10 @@ const CloudSync = {
   _loaded: false,
   _mode: null,
   _renderReady: null,
+  _autoSyncTimer: null,
   TOKEN_KEY: 'candeias_render_token',
   REMEMBER_TOKEN_KEY: 'candeias_render_token_persist',
+  EMERGENCY_KEY: 'candeias_emergency_backup',
   AUTO_SYNC_MS: 30000,
 
   getConfig() {
@@ -28,7 +30,7 @@ const CloudSync = {
   },
 
   isSignedIn() {
-    if (this.isRenderMode()) return !!sessionStorage.getItem(this.TOKEN_KEY);
+    if (this.isRenderMode()) return !!this.getToken();
     return !!this._auth?.currentUser;
   },
 
@@ -46,6 +48,184 @@ const CloudSync = {
   userEmail() {
     if (this.isRenderMode()) return 'Render cloud';
     return this._auth?.currentUser?.email || '';
+  },
+
+  dataScore(state) {
+    if (!state || typeof state !== 'object') return 0;
+    return (state.items?.length || 0)
+      + (state.projects?.length || 0)
+      + (state.clients?.length || 0)
+      + (state.vaultEntries?.length || 0)
+      + (state.grades?.length || 0)
+      + (state.subscriptions?.length || 0);
+  },
+
+  emergencyBackup() {
+    if (!Store?.state || this.dataScore(Store.state) === 0) return;
+    try {
+      localStorage.setItem(this.EMERGENCY_KEY, JSON.stringify({
+        state: Store.state,
+        savedAt: new Date().toISOString(),
+        score: this.dataScore(Store.state),
+      }));
+    } catch {
+      /* storage full */
+    }
+  },
+
+  hasEmergencyBackup() {
+    try {
+      const raw = localStorage.getItem(this.EMERGENCY_KEY);
+      if (!raw) return false;
+      return this.dataScore(JSON.parse(raw)?.state) > 0;
+    } catch {
+      return false;
+    }
+  },
+
+  restoreEmergencyBackup() {
+    try {
+      const raw = localStorage.getItem(this.EMERGENCY_KEY);
+      if (!raw) return { ok: false, source: 'local', score: 0 };
+      const { state } = JSON.parse(raw);
+      const score = this.dataScore(state);
+      if (score === 0) return { ok: false, source: 'local', score: 0 };
+      Store.state = migrateState(state);
+      Store.save({ skipCloud: true });
+      return { ok: true, source: 'local emergency backup', score };
+    } catch {
+      return { ok: false, source: 'local', score: 0 };
+    }
+  },
+
+  async restoreCloudBackupLatest() {
+    if (!this.isRenderMode() || !this.isSignedIn()) {
+      return { ok: false, source: 'cloud backup', score: 0 };
+    }
+    try {
+      const r = await fetch('/api/cloud/backups/latest', {
+        headers: { 'X-Sync-Token': this.getToken() },
+      });
+      if (!r.ok) return { ok: false, source: 'cloud backup', score: 0 };
+      const data = await r.json();
+      const score = this.dataScore(data?.state);
+      if (score === 0) return { ok: false, source: 'cloud backup', score: 0 };
+      this.emergencyBackup();
+      this._applyRemoteState(data.state, data.updatedAt || new Date().toISOString());
+      return { ok: true, source: 'cloud backup', score };
+    } catch {
+      return { ok: false, source: 'cloud backup', score: 0 };
+    }
+  },
+
+  async restoreFromBestAvailable() {
+    const before = this.dataScore(Store.state);
+    if (before > 0) {
+      return { ok: true, source: 'current data', score: before, message: 'App already has data.' };
+    }
+
+    let result = this.restoreEmergencyBackup();
+    if (result.ok) {
+      await this.pushToCloud({ force: true }).catch(() => {});
+      return { ...result, message: `Restored ${result.score} records from ${result.source}.` };
+    }
+
+    result = await this.restoreCloudBackupLatest();
+    if (result.ok) {
+      await this.pushToCloud({ force: true }).catch(() => {});
+      return { ...result, message: `Restored ${result.score} records from ${result.source}.` };
+    }
+
+    if (this.isSignedIn()) {
+      await this.syncNow();
+      const after = this.dataScore(Store.state);
+      if (after > 0) {
+        return {
+          ok: true,
+          source: 'cloud sync',
+          score: after,
+          message: `Restored ${after} records from cloud.`,
+        };
+      }
+    }
+
+    return {
+      ok: false,
+      score: 0,
+      source: 'none',
+      message: 'No previous copy found. Use Import backup if you have a .json file.',
+    };
+  },
+
+  _setSyncMeta(direction, message) {
+    if (!Store.state.settings) Store.state.settings = {};
+    Store.state.settings.lastSyncDirection = direction || 'none';
+    Store.state.settings.lastSyncMessage = message || '';
+  },
+
+  _decideSync(localState, localAt, remoteState, remoteAt) {
+    const localScore = this.dataScore(localState);
+    const remoteScore = this.dataScore(remoteState);
+    const now = new Date().toISOString();
+
+    if (remoteScore === 0 && localScore === 0) {
+      return { action: 'none', direction: 'none', message: 'No data on device or cloud.' };
+    }
+    if (remoteScore > 0 && localScore === 0) {
+      return {
+        action: 'pull',
+        state: remoteState,
+        updatedAt: remoteAt || now,
+        direction: 'pull',
+        message: `Downloaded from cloud (${remoteScore} records).`,
+      };
+    }
+    if (localScore > 0 && remoteScore === 0) {
+      return {
+        action: 'push',
+        state: localState,
+        updatedAt: localAt || now,
+        direction: 'push',
+        message: `Uploaded to cloud (${localScore} records).`,
+      };
+    }
+    if (!localAt || (remoteAt && remoteAt > localAt)) {
+      return {
+        action: 'pull',
+        state: remoteState,
+        updatedAt: remoteAt,
+        direction: 'pull',
+        message: 'Cloud copy is newer — downloaded.',
+      };
+    }
+    if (localAt && (!remoteAt || localAt > remoteAt)) {
+      return {
+        action: 'push',
+        state: localState,
+        updatedAt: localAt,
+        direction: 'push',
+        message: 'This device is newer — uploaded.',
+      };
+    }
+    if (remoteScore > localScore) {
+      return {
+        action: 'pull',
+        state: remoteState,
+        updatedAt: remoteAt || now,
+        direction: 'pull',
+        message: 'Cloud has more data — downloaded.',
+      };
+    }
+    if (localScore > remoteScore) {
+      return {
+        action: 'push',
+        state: localState,
+        updatedAt: localAt || now,
+        direction: 'push',
+        message: 'This device has more data — uploaded.',
+      };
+    }
+    return { action: 'none', direction: 'none', message: 'Already in sync.' };
   },
 
   async detectRenderBackend() {
@@ -107,7 +287,7 @@ const CloudSync = {
       this._auth = firebase.auth();
       this._db = firebase.firestore();
       this._auth.onAuthStateChanged((user) => {
-        if (user) this.pullFromCloud().catch(() => {});
+        if (user) this.syncNow().catch(() => {});
       });
     } catch (e) {
       console.warn('CloudSync init failed', e);
@@ -133,8 +313,7 @@ const CloudSync = {
     sessionStorage.setItem(this.TOKEN_KEY, data.token);
     if (remember) localStorage.setItem(this.REMEMBER_TOKEN_KEY, data.token);
     else localStorage.removeItem(this.REMEMBER_TOKEN_KEY);
-    await this.pullFromCloud();
-    return true;
+    return this.syncNow();
   },
 
   renderSignOut() {
@@ -147,8 +326,8 @@ const CloudSync = {
     const cred = await this._auth.createUserWithEmailAndPassword(email.trim(), password);
     Store.state.settings.cloudEmail = cred.user.email;
     Store.state.cloudUpdatedAt = new Date().toISOString();
-    Store.save();
-    await this.pushToCloud();
+    Store.save({ skipCloud: true });
+    await this.pushToCloud({ force: true });
     return cred.user;
   },
 
@@ -156,8 +335,8 @@ const CloudSync = {
     await this.ensureReady();
     const cred = await this._auth.signInWithEmailAndPassword(email.trim(), password);
     Store.state.settings.cloudEmail = cred.user.email;
-    Store.save();
-    await this.pullFromCloud();
+    Store.save({ skipCloud: true });
+    await this.syncNow();
     return cred.user;
   },
 
@@ -168,7 +347,7 @@ const CloudSync = {
     }
     if (this._auth) await this._auth.signOut();
     Store.state.settings.cloudEmail = '';
-    Store.save();
+    Store.save({ skipCloud: true });
   },
 
   async ensureReady() {
@@ -184,6 +363,7 @@ const CloudSync = {
   },
 
   _applyRemoteState(remoteState, remoteAt) {
+    this.emergencyBackup();
     const migrated = migrateState(remoteState);
     migrated.cloudUpdatedAt = remoteAt;
     Store.state = migrated;
@@ -196,79 +376,68 @@ const CloudSync = {
     }
   },
 
-  async pushToCloud() {
+  async _fetchRemoteRender() {
+    const r = await fetch('/api/cloud/state', {
+      headers: { 'X-Sync-Token': this.getToken() },
+    });
+    if (!r.ok) throw new Error('Cloud download failed.');
+    return r.json();
+  },
+
+  async _pushRenderState(state, updatedAt) {
+    const r = await fetch('/api/cloud/state', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Sync-Token': this.getToken(),
+      },
+      body: JSON.stringify({ state, updatedAt, version: APP_VERSION }),
+    });
+    if (r.status === 409) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || 'Cloud rejected empty upload.');
+    }
+    if (!r.ok) throw new Error('Cloud upload failed.');
+    return r.json();
+  },
+
+  async pushToCloud(opts = {}) {
     if (!this.isSignedIn()) return;
-
-    const updatedAt = new Date().toISOString();
-
-    if (this.isRenderMode()) {
-      const r = await fetch('/api/cloud/state', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Sync-Token': this.getToken(),
-        },
-        body: JSON.stringify({
-          state: Store.state,
-          updatedAt,
-          version: APP_VERSION,
-        }),
-      });
-      if (!r.ok) throw new Error('Cloud upload failed.');
-      Store.state.cloudUpdatedAt = updatedAt;
-      Store.save({ skipCloud: true });
-      Store.state.settings.lastCloudSync = updatedAt;
+    const localScore = this.dataScore(Store.state);
+    if (!opts.force && localScore === 0) {
+      console.warn('CloudSync: blocked push of empty state');
       return;
     }
 
-    const payload = { state: Store.state, updatedAt, version: APP_VERSION };
+    if (this.isRenderMode()) {
+      if (!opts.force && localScore === 0) return;
+      const remote = await this._fetchRemoteRender();
+      const remoteScore = this.dataScore(remote?.state);
+      if (!opts.force && remoteScore > 0 && localScore === 0) return;
+
+      const at = new Date().toISOString();
+      await this._pushRenderState(Store.state, at);
+      Store.state.cloudUpdatedAt = at;
+      Store.save({ skipCloud: true });
+      Store.state.settings.lastCloudSync = at;
+      this._setSyncMeta('push', 'Uploaded to cloud.');
+      return;
+    }
+
+    const payload = { state: Store.state, updatedAt: new Date().toISOString(), version: APP_VERSION };
     await this.docRef().set(payload);
-    Store.state.cloudUpdatedAt = updatedAt;
+    Store.state.cloudUpdatedAt = payload.updatedAt;
     Store.save({ skipCloud: true });
-    Store.state.settings.lastCloudSync = updatedAt;
+    Store.state.settings.lastCloudSync = payload.updatedAt;
+    this._setSyncMeta('push', 'Uploaded to cloud.');
   },
 
   async pullFromCloud() {
-    if (!this.isSignedIn()) return false;
-
-    if (this.isRenderMode()) {
-      const r = await fetch('/api/cloud/state', {
-        headers: { 'X-Sync-Token': this.getToken() },
-      });
-      if (!r.ok) throw new Error('Cloud download failed.');
-      const remote = await r.json();
-      if (!remote?.state) {
-        await this.pushToCloud();
-        return true;
-      }
-      const remoteAt = remote.updatedAt || '';
-      const localAt = Store.state.cloudUpdatedAt || '';
-      if (!localAt || remoteAt > localAt) {
-        this._applyRemoteState(remote.state, remoteAt);
-      }
-      Store.state.settings.lastCloudSync = remoteAt;
-      Store.save({ skipCloud: true });
-      return true;
-    }
-
-    const snap = await this.docRef().get();
-    if (!snap.exists) {
-      await this.pushToCloud();
-      return true;
-    }
-    const remote = snap.data();
-    const remoteAt = remote.updatedAt || '';
-    const localAt = Store.state.cloudUpdatedAt || '';
-    if (!localAt || remoteAt > localAt) {
-      this._applyRemoteState(remote.state, remoteAt);
-    }
-    Store.state.settings.lastCloudSync = remoteAt;
-    Store.save({ skipCloud: true });
-    return true;
+    return this.syncNow();
   },
 
   async syncNow() {
-    if (!this.isSignedIn()) return { changed: false };
+    if (!this.isSignedIn()) return { changed: false, direction: 'none' };
 
     if (this.isRenderMode()) {
       const r = await fetch('/api/sync/now', {
@@ -283,7 +452,10 @@ const CloudSync = {
           version: APP_VERSION,
         }),
       });
-      if (!r.ok) throw new Error('Sync failed.');
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.detail || 'Sync failed.');
+      }
       const res = await r.json();
       if (res.changed && res.direction === 'pull' && res.state) {
         this._applyRemoteState(res.state, res.updatedAt || '');
@@ -292,18 +464,36 @@ const CloudSync = {
         Store.save({ skipCloud: true });
         Store.state.settings.lastCloudSync = res.updatedAt;
       }
+      this._setSyncMeta(res.direction || 'none', res.message || '');
       return res;
     }
 
-    await this.pullFromCloud();
-    return { changed: true };
+    const snap = await this.docRef().get();
+    const remote = snap.exists ? snap.data() : null;
+    const remoteState = remote?.state || null;
+    const remoteAt = remote?.updatedAt || '';
+    const localAt = Store.state.cloudUpdatedAt || '';
+    const decision = this._decideSync(Store.state, localAt, remoteState, remoteAt);
+
+    if (decision.action === 'pull') {
+      this._applyRemoteState(decision.state, decision.updatedAt);
+      this._setSyncMeta('pull', decision.message);
+      return { changed: true, direction: 'pull', message: decision.message };
+    }
+    if (decision.action === 'push') {
+      await this.pushToCloud({ force: true });
+      this._setSyncMeta('push', decision.message);
+      return { changed: true, direction: 'push', message: decision.message };
+    }
+    this._setSyncMeta('none', decision.message);
+    return { changed: false, direction: 'none', message: decision.message };
   },
 
   scheduleUpload() {
     if (!this.isSignedIn()) return;
     clearTimeout(this._uploadTimer);
     this._uploadTimer = setTimeout(() => {
-      this.pushToCloud().catch((e) => console.warn('Cloud upload failed', e));
+      this.syncNow().catch((e) => console.warn('Cloud sync failed', e));
     }, 2000);
   },
 
@@ -322,14 +512,18 @@ const CloudSync = {
   },
 
   statusText() {
+    const score = this.dataScore(Store.state);
+    const msg = Store.state.settings?.lastSyncMessage;
     if (this.isRenderMode()) {
       if (!this.isSignedIn()) return 'Render — sign in with password';
       const t = Store.state.settings.lastCloudSync;
-      return t ? `Render synced · ${new Date(t).toLocaleString()}` : 'Render — syncing…';
+      const base = t ? `Render synced · ${new Date(t).toLocaleString()}` : 'Render — syncing…';
+      return `${base} · ${score} records${msg ? ` — ${msg}` : ''}`;
     }
     if (!this.isConfigured()) return 'Not configured — add Firebase in Settings';
     if (!this.isSignedIn()) return 'Configured — sign in to sync';
     const t = Store.state.settings.lastCloudSync;
-    return t ? `Synced · ${new Date(t).toLocaleString()}` : 'Signed in — syncing…';
+    const base = t ? `Synced · ${new Date(t).toLocaleString()}` : 'Signed in — syncing…';
+    return `${base} · ${score} records`;
   },
 };

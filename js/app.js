@@ -1260,17 +1260,22 @@ const App = {
       case 'cloud-sync-now':
         try {
           if (!CloudSync.isSignedIn()) { alert('Sign in first (logout → login).'); break; }
-          if (CloudSync.isRenderMode()) {
-            await CloudSync.syncNow();
-          } else {
-            await CloudSync.ensureReady();
-            await CloudSync.pullFromCloud();
-            await CloudSync.pushToCloud();
-          }
+          await CloudSync.syncNow();
           alert('Sync complete!');
           this.render();
         } catch (e) {
           alert(`Sync failed: ${e.message}`);
+        }
+        break;
+      case 'restore-my-data':
+        try {
+          const res = await CloudSync.restoreFromBestAvailable();
+          alert(res.message || (res.ok ? 'Data restored.' : 'Nothing to restore.'));
+          this.renderWorkspaceBar();
+          this.renderAreaFilters();
+          this.refresh();
+        } catch (e) {
+          alert(`Restore failed: ${e.message}`);
         }
         break;
       case 'check-app-update':

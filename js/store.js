@@ -201,6 +201,9 @@ const Store = {
       this.state.cloudUpdatedAt = new Date().toISOString();
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    if (!opts.skipCloud && typeof CloudSync !== 'undefined' && CloudSync.dataScore(this.state) > 0) {
+      CloudSync.emergencyBackup();
+    }
     if (!opts.skipCloud && typeof CloudSync !== 'undefined') {
       CloudSync.scheduleUpload();
     }
