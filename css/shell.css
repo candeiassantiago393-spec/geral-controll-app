@@ -226,15 +226,19 @@ body {
   display: none;
 }
 
-.app-tabs::-webkit-scrollbar {
-  display: none;
-}
+.app-tabs {
+  position: relative;
+  z-index: 1;
   display: flex;
   gap: 4px;
   padding: 0;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+}
+
+.app-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .app-tab {
