@@ -110,7 +110,10 @@
       </header>
 
       <div class="app-tabs-wrap" id="app-tabs-wrap">
-        <div class="app-tabs" id="app-tabs" role="tablist"></div>
+        <div class="app-tabs-inner">
+          <div class="app-tab-indicator" id="app-tab-indicator" aria-hidden="true"></div>
+          <div class="app-tabs" id="app-tabs" role="tablist"></div>
+        </div>
       </div>
 
       <header class="topbar legacy-topbar">
@@ -133,7 +136,9 @@
       <div class="keyboard-hints hidden" id="keyboard-hints">
         <kbd>Ctrl K</kbd> Search · <kbd>Esc</kbd> Close modal · Calendar: filters in the top bar
       </div>
-      <div class="content" id="content"></div>
+      <div class="content-stage" id="content-stage">
+        <div class="content" id="content"></div>
+      </div>
 
       <div class="bottom-nav-wrap">
         <nav class="bottom-nav" id="bottom-nav" aria-label="Main"></nav>

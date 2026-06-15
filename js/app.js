@@ -57,7 +57,7 @@ const App = {
     this.bindAreaFiltersToggle();
     this.updateBadges();
     this.startTickers();
-    this.navigate('dashboard');
+    this.navigate('dashboard', { skipTransition: true });
   },
 
   offerClearDemoIfNeeded() {
@@ -320,57 +320,72 @@ const App = {
     });
   },
 
-  navigate(view) {
-    this.currentView = view;
-    this.currentHub = AppShell.viewToHub(view);
-    if (view !== 'clients') this.clientDetailId = null;
-    if (view !== 'projects') this.projectDetailId = null;
-    document.querySelectorAll('.nav-item[data-view]').forEach((el) => {
-      el.classList.toggle('active', el.dataset.view === view);
-    });
-    const titles = {
-      dashboard: ['view.dashboard', 'view.dashboard.sub'],
-      inbox: ['view.inbox', 'view.inbox.sub'],
-      today: ['view.today', 'view.today.sub'],
-      calendar: ['view.calendar', 'view.calendar.sub'],
-      timeline: ['view.timeline', 'view.timeline.sub'],
-      tasks: ['view.tasks', 'view.tasks.sub'],
-      overdue: ['view.overdue', 'view.overdue.sub'],
-      pinned: ['view.pinned', 'view.pinned.sub'],
-      blocked: ['view.blocked', 'view.blocked.sub'],
-      projects: ['view.projects', 'view.projects.sub'],
-      kanban: ['view.kanban', 'view.kanban.sub'],
-      clients: ['view.clients', 'view.clients.sub'],
-      vault: ['view.vault', 'view.vault.sub'],
-      contacts: ['view.contacts', 'view.contacts.sub'],
-      emails: ['view.emails', 'view.emails.sub'],
-      links: ['view.links', 'view.links.sub'],
-      subscriptions: ['view.subscriptions', 'view.subscriptions.sub'],
-      templates: ['view.templates', 'view.templates.sub'],
-      tools: ['view.tools', 'view.tools.sub'],
-      review: ['view.review', 'view.review.sub'],
-      stats: ['view.stats', 'view.stats.sub'],
-      archive: ['view.archive', 'view.archive.sub'],
-      areas: ['view.areas', 'view.areas.sub'],
-      settings: ['view.settings', 'view.settings.sub'],
-      personalization: ['view.personalization', 'view.personalization.sub'],
-      accessibility: ['view.accessibility', 'view.accessibility.sub'],
-      search: ['view.search', 'view.search.sub'],
+  navigate(view, opts = {}) {
+    const prevView = this.currentView;
+    const prevHub = this.currentHub || AppShell.viewToHub(prevView);
+    const newHub = AppShell.viewToHub(view);
+    const source = opts.source || 'none';
+
+    const apply = () => {
+      this.currentView = view;
+      this.currentHub = newHub;
+      if (view !== 'clients') this.clientDetailId = null;
+      if (view !== 'projects') this.projectDetailId = null;
+      document.querySelectorAll('.nav-item[data-view]').forEach((el) => {
+        el.classList.toggle('active', el.dataset.view === view);
+      });
+      const titles = {
+        dashboard: ['view.dashboard', 'view.dashboard.sub'],
+        inbox: ['view.inbox', 'view.inbox.sub'],
+        today: ['view.today', 'view.today.sub'],
+        calendar: ['view.calendar', 'view.calendar.sub'],
+        timeline: ['view.timeline', 'view.timeline.sub'],
+        tasks: ['view.tasks', 'view.tasks.sub'],
+        overdue: ['view.overdue', 'view.overdue.sub'],
+        pinned: ['view.pinned', 'view.pinned.sub'],
+        blocked: ['view.blocked', 'view.blocked.sub'],
+        projects: ['view.projects', 'view.projects.sub'],
+        kanban: ['view.kanban', 'view.kanban.sub'],
+        clients: ['view.clients', 'view.clients.sub'],
+        vault: ['view.vault', 'view.vault.sub'],
+        contacts: ['view.contacts', 'view.contacts.sub'],
+        emails: ['view.emails', 'view.emails.sub'],
+        links: ['view.links', 'view.links.sub'],
+        subscriptions: ['view.subscriptions', 'view.subscriptions.sub'],
+        templates: ['view.templates', 'view.templates.sub'],
+        tools: ['view.tools', 'view.tools.sub'],
+        review: ['view.review', 'view.review.sub'],
+        stats: ['view.stats', 'view.stats.sub'],
+        archive: ['view.archive', 'view.archive.sub'],
+        areas: ['view.areas', 'view.areas.sub'],
+        settings: ['view.settings', 'view.settings.sub'],
+        personalization: ['view.personalization', 'view.personalization.sub'],
+        accessibility: ['view.accessibility', 'view.accessibility.sub'],
+        search: ['view.search', 'view.search.sub'],
+      };
+      const [titleKey, subKey] = titles[view] || ['', ''];
+      document.getElementById('view-title').textContent = titleKey ? I18n.t(titleKey) : 'Candeias';
+      document.getElementById('view-subtitle').textContent = subKey ? I18n.t(subKey) : '';
+      const filterBar = document.getElementById('filter-bar');
+      if (['tasks', 'calendar', 'timeline', 'inbox', 'contacts', 'emails', 'archive'].includes(view)) {
+        filterBar.classList.remove('hidden');
+        this.renderFilterBar();
+      } else filterBar.classList.add('hidden');
+      this.render();
+      this.updateBadges();
+      this.renderWorkspaceBar();
+      AppShell.render();
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebar-backdrop')?.classList.remove('open');
     };
-    const [titleKey, subKey] = titles[view] || ['', ''];
-    document.getElementById('view-title').textContent = titleKey ? I18n.t(titleKey) : 'Candeias';
-    document.getElementById('view-subtitle').textContent = subKey ? I18n.t(subKey) : '';
-    const filterBar = document.getElementById('filter-bar');
-    if (['tasks', 'calendar', 'timeline', 'inbox', 'contacts', 'emails', 'archive'].includes(view)) {
-      filterBar.classList.remove('hidden');
-      this.renderFilterBar();
-    } else filterBar.classList.add('hidden');
-    this.render();
-    this.updateBadges();
-    this.renderWorkspaceBar();
-    AppShell.render();
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sidebar-backdrop')?.classList.remove('open');
+
+    if (view === prevView && !opts.force) return;
+
+    const kind = opts.skipTransition
+      ? null
+      : AppShell.transitionKind(prevView, view, prevHub, newHub, source);
+
+    AppShell.runTransition(kind, apply);
   },
 
   filterInboxItems(items) {
@@ -925,7 +940,11 @@ const App = {
   async handleAction(action, ds) {
     const id = ds.id;
     switch (action) {
-      case 'nav': this.navigate(ds.view); break;
+      case 'nav': {
+        const src = AppShell.viewToHub(ds.view) === AppShell.viewToHub(App.currentView) ? 'tab' : 'hub';
+        this.navigate(ds.view, { source: src });
+        break;
+      }
       case 'open-item':
         if (String(id).startsWith('school-')) break;
         this.openItemModal(id);

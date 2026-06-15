@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'candeias_app_v3';
-const APP_VERSION = '3.3.0';
+const APP_VERSION = '3.3.1';
 
 const ITEM_TYPES = {
   note: { label: 'Note', icon: '📝' },
