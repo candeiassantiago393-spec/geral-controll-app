@@ -4,6 +4,7 @@ const AppShell = {
   _bottomNavBound: false,
   _touchStartX: 0,
   _touchStartY: 0,
+  _lastRenderedHub: null,
 
   hubs: {
     home: {
@@ -87,57 +88,43 @@ const AppShell = {
 
   useTransitions() {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-    return window.innerWidth <= 1024;
+    return false;
+  },
+
+  useTabIndicator() {
+    return window.innerWidth > 767 && !('ontouchstart' in window);
   },
 
   transitionKind(prevView, view, prevHub, newHub, source) {
     if (!prevView || prevView === view) return null;
-    if (source === 'hub' || prevHub !== newHub) return 'hub';
-    const prevIdx = this.getTabIndex(newHub, prevView);
-    const newIdx = this.getTabIndex(newHub, view);
-    if (prevIdx < 0 || newIdx < 0 || prevIdx === newIdx) return 'fade';
-    return newIdx > prevIdx ? 'forward' : 'backward';
+    if (source === 'tab') return null;
+    if (source === 'hub' || prevHub !== newHub) return 'fade';
+    return null;
   },
 
   runTransition(kind, applyFn) {
-    const stage = document.getElementById('content-stage');
-    if (!kind || !stage || !this.useTransitions()) {
+    if (!kind || !this.useTransitions()) {
       applyFn();
       return;
     }
 
-    const exitMap = {
-      forward: 'page-exit-left',
-      backward: 'page-exit-right',
-      hub: 'page-exit-hub',
-      fade: 'page-exit-fade',
-    };
-    const enterMap = {
-      forward: 'page-enter-right',
-      backward: 'page-enter-left',
-      hub: 'page-enter-hub',
-      fade: 'page-enter-fade',
-    };
+    const content = document.getElementById('content');
+    if (!content) {
+      applyFn();
+      return;
+    }
 
-    const exitCls = exitMap[kind] || exitMap.fade;
-    const enterCls = enterMap[kind] || enterMap.fade;
     let finished = false;
-
-    const finishExit = () => {
+    const finish = () => {
       if (finished) return;
       finished = true;
-      stage.classList.remove(exitCls);
+      content.classList.remove('page-exit-fade', 'page-enter-fade');
       applyFn();
-      stage.classList.add(enterCls);
-      stage.addEventListener('animationend', () => {
-        stage.classList.remove(enterCls);
-      }, { once: true });
     };
 
-    stage.classList.remove(...Object.values(exitMap), ...Object.values(enterMap));
-    stage.classList.add(exitCls);
-    stage.addEventListener('animationend', finishExit, { once: true });
-    setTimeout(finishExit, 300);
+    content.classList.add('page-exit-fade');
+    content.addEventListener('animationend', finish, { once: true });
+    setTimeout(finish, 200);
   },
 
   badgeCount(id) {
@@ -157,7 +144,6 @@ const AppShell = {
     this.renderTabs(hubId);
     this.renderBottomNav(hubId);
     this.updateHeaderBadges();
-    requestAnimationFrame(() => this.updateTabIndicator());
   },
 
   renderTabs(hubId) {
@@ -167,9 +153,26 @@ const AppShell = {
     const hub = this.hubs[hubId];
     if (!hub) {
       wrap.classList.add('hidden');
+      this._lastRenderedHub = null;
       return;
     }
     wrap.classList.remove('hidden');
+
+    const hubUnchanged = this._lastRenderedHub === hubId
+      && el.querySelectorAll('.app-tab').length === hub.tabs.length;
+
+    if (hubUnchanged) {
+      el.querySelectorAll('.app-tab').forEach((btn) => {
+        const active = btn.dataset.view === App.currentView;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      this.scrollActiveTabIntoView(false);
+      if (this.useTabIndicator()) this.updateTabIndicator();
+      return;
+    }
+
+    this._lastRenderedHub = hubId;
     el.innerHTML = hub.tabs.map((t) => {
       const n = t.badge ? this.badgeCount(t.badge) : 0;
       const badge = n > 0 ? `<span class="app-tab-badge">${n}</span>` : '';
@@ -186,10 +189,20 @@ const AppShell = {
       });
     }
 
-    requestAnimationFrame(() => this.updateTabIndicator());
+    this.scrollActiveTabIntoView(false);
+    if (this.useTabIndicator()) requestAnimationFrame(() => this.updateTabIndicator());
+  },
+
+  scrollActiveTabIntoView(smooth) {
+    const tabs = document.getElementById('app-tabs');
+    const active = tabs?.querySelector('.app-tab.active');
+    if (!tabs || !active) return;
+    const left = active.offsetLeft - (tabs.clientWidth - active.offsetWidth) / 2;
+    tabs.scrollTo({ left: Math.max(0, left), behavior: smooth ? 'smooth' : 'auto' });
   },
 
   updateTabIndicator() {
+    if (!this.useTabIndicator()) return;
     const indicator = document.getElementById('app-tab-indicator');
     const tabs = document.getElementById('app-tabs');
     const active = tabs?.querySelector('.app-tab.active');
@@ -197,12 +210,9 @@ const AppShell = {
       indicator?.classList.remove('visible');
       return;
     }
-    const tabsRect = tabs.getBoundingClientRect();
-    const rect = active.getBoundingClientRect();
-    indicator.style.width = `${rect.width}px`;
-    indicator.style.transform = `translateX(${rect.left - tabsRect.left + tabs.scrollLeft}px)`;
+    indicator.style.width = `${active.offsetWidth}px`;
+    indicator.style.transform = `translateX(${active.offsetLeft}px)`;
     indicator.classList.add('visible');
-    active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
   },
 
   renderBottomNav(activeHub) {
@@ -261,27 +271,7 @@ const AppShell = {
   },
 
   bindSwipe() {
-    if (this._swipeBound) return;
-    const stage = document.getElementById('content-stage');
-    if (!stage) return;
-    this._swipeBound = true;
-
-    stage.addEventListener('touchstart', (e) => {
-      if (e.touches.length !== 1) return;
-      this._touchStartX = e.touches[0].clientX;
-      this._touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-
-    stage.addEventListener('touchend', (e) => {
-      if (!this.useTransitions()) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - this._touchStartX;
-      const dy = t.clientY - this._touchStartY;
-      if (Math.abs(dx) < 56 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-      const dir = dx < 0 ? 1 : -1;
-      const next = this.getAdjacentTab(App.currentView, dir);
-      if (next) App.navigate(next, { source: 'tab' });
-    }, { passive: true });
+    /* Desativado no telemóvel — conflitava com scroll horizontal (timeline, kanban). */
   },
 
   bindEvents() {
@@ -297,6 +287,8 @@ const AppShell = {
     });
     document.getElementById('btn-header-search')?.addEventListener('click', () => App.openCommandPalette());
     this.bindSwipe();
-    window.addEventListener('resize', () => this.updateTabIndicator());
+    window.addEventListener('resize', () => {
+      if (AppShell.useTabIndicator()) AppShell.updateTabIndicator();
+    });
   },
 };
