@@ -92,7 +92,41 @@ const AppViews = {
       ${Store.state.settings.fullDemoLoaded ? `<div class="info-banner" style="opacity:0.85">💡 Demo data loaded · <a href="#" data-action="clear-all-data">Clear and start fresh</a></div>` : ''}`;
     }
     if (show('stats')) {
-      html += `<div class="stats-grid">
+      const openPct = stats.tasksOpen + stats.tasksWeekDone > 0
+        ? Math.round((stats.tasksWeekDone / (stats.tasksOpen + stats.tasksWeekDone)) * 100) : 0;
+      html += `<div class="insight-grid">
+        <div class="insight-card" data-action="nav" data-view="inbox">
+          <div><div class="insight-value">${stats.inbox}</div><div class="insight-label">${I18n.t('view.inbox')}</div></div>
+          <div class="insight-hint">${stats.inbox > 0 ? I18n.t('shell.hint.inbox') : I18n.t('shell.hint.inboxZero')}</div>
+        </div>
+        <div class="insight-card" data-action="nav" data-view="tasks">
+          <div><div class="insight-value">${stats.tasksOpen}</div><div class="insight-label">${I18n.t('shell.metric.openTasks')}</div></div>
+          <div class="insight-hint">${stats.tasksWeekDone} ${I18n.t('shell.metric.doneWeek')}</div>
+        </div>
+        <div class="insight-card" data-action="nav" data-view="overdue">
+          <div><div class="insight-value">${stats.overdue}</div><div class="insight-label">${I18n.t('view.overdue')}</div></div>
+          <div class="insight-hint">${stats.overdue > 0 ? I18n.t('shell.hint.overdue') : '✓'}</div>
+        </div>
+        <div class="insight-card" data-action="nav" data-view="projects">
+          <div><div class="insight-value">${stats.projects}</div><div class="insight-label">${I18n.t('view.projects')}</div></div>
+          <div class="insight-hint">${stats.hoursLogged}h ${I18n.t('shell.metric.logged')}</div>
+        </div>
+      </div>
+      <div class="engage-section">
+        <div class="engage-title">${I18n.t('shell.engage.title')}</div>
+        <div class="engage-scroll">
+          <div class="engage-card" data-action="nav" data-view="tasks"><div class="engage-icon">⚡</div><div class="engage-val">${openPct}%</div><div class="engage-lbl">${I18n.t('shell.engage.completion')}</div></div>
+          <div class="engage-card" data-action="nav" data-view="pinned"><div class="engage-icon">📌</div><div class="engage-val">${pinned.length}</div><div class="engage-lbl">${I18n.t('view.pinned')}</div></div>
+          <div class="engage-card" data-action="nav" data-view="review"><div class="engage-icon">📋</div><div class="engage-val">${review.done.length}</div><div class="engage-lbl">${I18n.t('shell.engage.done')}</div></div>
+          <div class="engage-card" data-action="nav" data-view="stats"><div class="engage-icon">📊</div><div class="engage-val">${stats.hoursLogged}h</div><div class="engage-lbl">${I18n.t('shell.metric.hours')}</div></div>
+        </div>
+      </div>
+      <div class="shell-cta" data-action="export-backup">
+        <div class="shell-cta-icon">📄</div>
+        <div class="shell-cta-body"><div class="shell-cta-title">${I18n.t('shell.cta.backup')}</div><div class="shell-cta-desc">${I18n.t('shell.cta.backupDesc')}</div></div>
+        <button type="button" class="shell-cta-btn" aria-hidden="true">↓</button>
+      </div>
+      <div class="stats-grid desktop-stats">
         <div class="stat-card" data-action="nav" data-view="inbox"><div class="stat-value">${stats.inbox}</div><div class="stat-label">Inbox</div></div>
         <div class="stat-card" data-action="nav" data-view="tasks"><div class="stat-value">${stats.tasksOpen}</div><div class="stat-label">Open tasks</div></div>
         <div class="stat-card"><div class="stat-value">${stats.tasksWeekDone}</div><div class="stat-label">Done/week</div></div>

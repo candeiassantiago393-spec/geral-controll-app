@@ -9,6 +9,7 @@ const App = {
   projectFilter: 'active',
   projectItemFilter: 'all',
   projectItemSort: 'date-desc',
+  currentHub: 'home',
   taskFilter: 'all',
   clientDetailId: null,
   clientTab: 'overview',
@@ -49,6 +50,7 @@ const App = {
     AppUpdate.init();
     CloudSync.init();
     I18n.apply();
+    AppShell.bindEvents();
     this.offerClearDemoIfNeeded();
     this.renderWorkspaceBar();
     this.renderAreaFilters();
@@ -245,6 +247,7 @@ const App = {
     this.renderAreaFilters();
     this.renderWorkspaceBar();
     this.updateBadges();
+    AppShell.render();
     if (['tasks', 'calendar', 'timeline', 'inbox', 'contacts', 'archive'].includes(this.currentView)) this.renderFilterBar();
   },
 
@@ -319,6 +322,7 @@ const App = {
 
   navigate(view) {
     this.currentView = view;
+    this.currentHub = AppShell.viewToHub(view);
     if (view !== 'clients') this.clientDetailId = null;
     if (view !== 'projects') this.projectDetailId = null;
     document.querySelectorAll('.nav-item[data-view]').forEach((el) => {
@@ -364,6 +368,7 @@ const App = {
     this.render();
     this.updateBadges();
     this.renderWorkspaceBar();
+    AppShell.render();
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebar-backdrop')?.classList.remove('open');
   },

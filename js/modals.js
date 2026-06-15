@@ -21,7 +21,7 @@ const AppModals = {
       <select class="form-control" name="areaId" id="layer-area"><option value="">— Inbox —</option>
       ${Store.state.areas.map((a) => `<option value="${a.id}" ${areaId === a.id ? 'selected' : ''}>${a.icon} ${Utils.esc(a.name)}</option>`).join('')}</select></div>
       <div class="form-row"><div class="form-group"><label>Project</label><select class="form-control" name="projectId" id="layer-project">${projectsHtml}</select></div>
-      <div class="form-group"><label>Context</label><select class="form-control" name="subContextId" id="layer-subctx">${subCtxHtml}</select></div></div>`;
+        <div class="form-group"><label>${I18n.t('field.context')}</label><select class="form-control" name="subContextId" id="layer-subctx">${subCtxHtml}</select></div></div>`;
   },
 
   updateLayerSelects() {

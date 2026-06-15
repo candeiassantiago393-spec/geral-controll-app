@@ -1,0 +1,668 @@
+/* Candeias v4 shell — purple insight layout (mobile-first) */
+
+:root {
+  --bg-deep: #09090e;
+  --bg-primary: #0f0f16;
+  --bg-secondary: #14141e;
+  --bg-card: #1a1a26;
+  --bg-elevated: #222230;
+  --bg-hover: #2a2a3a;
+  --border: #2e2e40;
+  --border-accent: rgba(139, 92, 246, 0.35);
+  --green: #8b5cf6;
+  --green-bright: #a78bfa;
+  --green-dim: #7c3aed;
+  --green-glow: rgba(139, 92, 246, 0.14);
+  --green-glow-strong: rgba(167, 139, 250, 0.28);
+  --accent: #8b5cf6;
+  --accent-bright: #c4b5fd;
+  --accent-dim: #6d28d9;
+  --accent-gradient: linear-gradient(135deg, #7c3aed 0%, #6366f1 55%, #8b5cf6 100%);
+  --accent-gradient-soft: linear-gradient(145deg, rgba(124, 58, 237, 0.35), rgba(99, 102, 241, 0.12));
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+  --bottom-nav-h: 76px;
+  --header-h: 58px;
+  --tabs-h: 48px;
+}
+
+body {
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124, 58, 237, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    var(--bg-deep);
+}
+
+.brand-icon,
+.btn-primary,
+.nav-item.active,
+.workspace-chip.active,
+.filter-chip.active,
+.app-tab.active {
+  --shell-accent: var(--accent-gradient);
+}
+
+.brand-icon {
+  background: var(--accent-gradient) !important;
+  box-shadow: 0 4px 20px var(--green-glow-strong) !important;
+}
+
+.btn-primary,
+.btn-quick,
+.workspace-chip.active,
+.filter-chip.active {
+  background: var(--accent-gradient) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px var(--green-glow);
+}
+
+.nav-item.active {
+  background: var(--green-glow) !important;
+  color: var(--accent-bright) !important;
+  border-color: var(--border-accent) !important;
+}
+
+.nav-badge {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+.stat-card,
+.item-card,
+.project-card,
+.settings-box,
+.insight-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.stat-card:hover,
+.insight-card:hover {
+  border-color: var(--border-accent);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+/* ─── App header (mockup top bar) ─── */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.app-header-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 0;
+  text-align: left;
+}
+
+.app-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 16px;
+  color: #fff;
+  box-shadow: 0 4px 14px var(--green-glow-strong);
+  flex-shrink: 0;
+}
+
+.app-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-header-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.app-header-chevron {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-header-btn {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.app-header-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-accent);
+}
+
+.app-header-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-deep);
+}
+
+.app-header-badge.hidden {
+  display: none;
+}
+
+/* ─── Horizontal tabs (mockup pill row) ─── */
+.app-tabs-wrap {
+  flex-shrink: 0;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(15, 15, 22, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+.app-tabs-wrap.hidden {
+  display: none;
+}
+
+.app-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.app-tab {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.app-tab.active {
+  background: var(--bg-elevated);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.app-tab-badge {
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  min-width: 16px;
+  text-align: center;
+}
+
+/* ─── Insight cards (dashboard 2×2 grid) ─── */
+.insight-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.insight-card {
+  padding: 16px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+
+.insight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 80px;
+  background: var(--accent-gradient-soft);
+  border-radius: 50%;
+  transform: translate(30%, -30%);
+  pointer-events: none;
+}
+
+.insight-card:active {
+  transform: scale(0.98);
+}
+
+.insight-value {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.insight-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.insight-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  line-height: 1.35;
+}
+
+.insight-card.wide {
+  grid-column: span 2;
+  min-height: 100px;
+}
+
+/* Engagement row (horizontal scroll metrics) */
+.engage-section {
+  margin-bottom: 20px;
+}
+
+.engage-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.engage-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.engage-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.engage-card {
+  flex-shrink: 0;
+  min-width: 130px;
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+}
+
+.engage-card .engage-icon {
+  font-size: 14px;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.engage-card .engage-val {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.engage-card .engage-lbl {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.engage-delta {
+  font-size: 10px;
+  color: #34d399;
+  margin-top: 6px;
+}
+
+/* CTA banner */
+.shell-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.shell-cta:hover {
+  border-color: var(--border-accent);
+}
+
+.shell-cta-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent-gradient-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.shell-cta-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.shell-cta-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.shell-cta-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.shell-cta-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px var(--green-glow);
+}
+
+/* ─── Bottom navigation (floating pill) ─── */
+.bottom-nav-wrap {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  padding: 0 16px max(12px, env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.bottom-nav-wrap .bottom-nav {
+  pointer-events: auto;
+}
+
+.bottom-nav {
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  width: min(calc(100% - 32px), 400px);
+  margin: 0 auto;
+  padding: 6px 8px;
+  background: rgba(22, 22, 34, 0.96);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+}
+
+.bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+  transition: all 0.15s;
+  min-width: 0;
+}
+
+.bottom-nav-item.active {
+  color: var(--accent-bright);
+}
+
+.bottom-nav-item.active .bottom-nav-icon {
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 4px 14px var(--green-glow-strong);
+}
+
+.bottom-nav-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.15s;
+}
+
+.bottom-nav-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  max-width: 64px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-nav-fab {
+  width: 52px;
+  height: 52px;
+  margin: 0 4px;
+  margin-top: -20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 24px var(--green-glow-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.bottom-nav-fab:active {
+  transform: scale(0.94);
+}
+
+/* ─── Layout: mobile shell ─── */
+@media (max-width: 767px) {
+  .bottom-nav-wrap .bottom-nav {
+    display: flex;
+  }
+
+  .app-header {
+    display: flex;
+  }
+
+  .app-tabs-wrap:not(.hidden) {
+    display: block;
+  }
+
+  .topbar.legacy-topbar {
+    display: none !important;
+  }
+
+  .main {
+    padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+  }
+
+  .content {
+    padding: 12px 16px 24px;
+  }
+
+  .workspace-bar {
+    padding: 6px 16px;
+    border-bottom: none;
+  }
+
+  .filter-bar:not(.hidden) {
+    padding: 6px 16px;
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .sidebar.open {
+    display: flex;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(300px, 88vw);
+    z-index: 300;
+  }
+
+  .insight-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stats-grid {
+    display: none;
+  }
+
+  .desktop-stats {
+    display: none !important;
+  }
+}
+
+/* ─── Desktop: sidebar + optional tabs ─── */
+@media (min-width: 768px) {
+  .app-header {
+    display: none;
+  }
+
+  .bottom-nav-wrap .bottom-nav {
+    display: none !important;
+  }
+
+  .app-tabs-wrap {
+    display: none !important;
+  }
+
+  .topbar.legacy-topbar {
+    display: flex;
+  }
+
+  .main {
+    padding-bottom: 0;
+  }
+
+  .desktop-stats {
+    display: grid !important;
+  }
+
+  .insight-grid {
+    display: none;
+  }
+
+  .engage-section,
+  .shell-cta {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .app-header {
+    display: flex;
+  }
+
+  .app-tabs-wrap:not(.hidden) {
+    display: block;
+  }
+
+  .bottom-nav-wrap .bottom-nav {
+    display: flex !important;
+  }
+
+  .topbar.legacy-topbar {
+    display: none !important;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .main {
+    padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+  }
+}
