@@ -516,6 +516,37 @@ const AppViews = {
       <button class="btn btn-sm btn-primary mt" data-action="add-config-list" data-list="${listKey}">+ Add</button>`;
   },
 
+  renderProjectStagesPerProjectList() {
+    const projects = Store.getActiveProjects().sort((a, b) => a.name.localeCompare(b.name, 'pt'));
+    const defaultStages = Store.getProjectStages();
+    if (!projects.length) {
+      return `<p class="muted">${I18n.t('project.stagesNoProjects')}</p>`;
+    }
+    return projects.map((p) => {
+      const custom = !!p.stages?.length;
+      const stagesText = custom ? p.stages.join('\n') : '';
+      const preview = custom ? p.stages.join(' → ') : defaultStages.join(' → ');
+      const area = Store.getArea(p.areaId);
+      return `<div class="settings-box mb project-stages-card">
+        <div class="section-header" style="margin-bottom:8px">
+          <div>
+            <strong>${Utils.esc(p.name)}</strong>
+            <span class="muted sm"> · ${area ? `${area.icon} ${Utils.esc(area.name)}` : ''}</span>
+          </div>
+          <span class="tag">${custom ? I18n.t('project.stagesCustom') : I18n.t('project.stagesUseDefault')}</span>
+        </div>
+        <p class="muted sm mb">${I18n.t('project.stagesPerProjectHint')}</p>
+        <textarea class="form-control project-stages-input" id="proj-stages-${p.id}" rows="4" placeholder="${Utils.esc(defaultStages.join('\n'))}">${Utils.esc(stagesText)}</textarea>
+        <p class="muted sm mt">${custom ? '' : `${I18n.t('project.stagesUseDefault')}: `}${Utils.esc(preview)}</p>
+        <div class="btn-row mt">
+          <button type="button" class="btn btn-sm btn-primary" data-action="save-project-stages" data-pid="${p.id}">${I18n.t('action.save')}</button>
+          <button type="button" class="btn btn-sm btn-ghost" data-action="clear-project-stages" data-pid="${p.id}">${I18n.t('project.stagesResetDefault')}</button>
+          <button type="button" class="btn btn-sm btn-ghost" data-action="edit-project" data-id="${p.id}">${I18n.t('project.edit')}</button>
+        </div>
+      </div>`;
+    }).join('');
+  },
+
   renderPersonalization() {
     const tab = App.personalizationTab || 'vault';
     const tabs = [
@@ -588,15 +619,18 @@ const AppViews = {
         </div>`).join('')}
         <button class="btn btn-sm" data-action="save-workspaces">Save workspaces</button>`;
     } else if (tab === 'tasks') {
-      body = `<h3 class="sub-heading">Kanban columns</h3>
+      body = `<h3 class="sub-heading">${I18n.t('project.stagesPerProjectTitle')}</h3>
+        <p class="muted mb">${I18n.t('project.stagesPerProjectDesc')}</p>
+        ${this.renderProjectStagesPerProjectList()}
+        <h3 class="sub-heading mt-lg">${I18n.t('project.stagesDefaultTitle')}</h3>
+        ${this.renderConfigStringList('projectStages', Store.getProjectStages(), I18n.t('project.stagesConfigDesc'))}
+        <p class="muted mt sm">${Store.getProjectStages().join(' → ')}</p>
+        <h3 class="sub-heading mt-lg">Kanban columns</h3>
         ${this.renderConfigStringList('kanbanColumns', Store.getKanbanColumns(), 'Kanban board columns (candeias.dev).')}
         <h3 class="sub-heading mt">Work statuses</h3>
         ${this.renderConfigStringList('workStatuses', Store.getWorkStatuses(), 'Internal task status (In progress, Blocked…).')}
         <h3 class="sub-heading mt">Priorities</h3>
-        ${this.renderConfigStringList('priorities', Store.getPriorities(), 'Priority levels on tasks.')}
-        <h3 class="sub-heading mt">${I18n.t('project.stages')}</h3>
-        ${this.renderConfigStringList('projectStages', Store.getProjectStages(), I18n.t('project.stagesConfigDesc'))}
-        <p class="muted mt sm">${Store.getProjectStages().join(' → ')}</p>`;
+        ${this.renderConfigStringList('priorities', Store.getPriorities(), 'Priority levels on tasks.')}`;
     } else if (tab === 'clients') {
       body = `<h3 class="sub-heading">Client statuses</h3>
         ${this.renderConfigStringList('clientStatuses', Store.getClientStatuses(), 'Lead, Active, Inactive…')}

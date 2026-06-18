@@ -1284,6 +1284,19 @@ const App = {
       case 'unarchive-project': Store.unarchiveProject(id); this.refresh(); break;
       case 'unarchive-item': Store.unarchiveItem(id); this.refresh(); break;
       case 'edit-project': this.openProjectModal(null, id); break;
+      case 'save-project-stages': {
+        const pid = ds.pid;
+        const ta = document.getElementById(`proj-stages-${pid}`);
+        const stages = (ta?.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
+        Store.updateProject(pid, { stages: stages.length ? stages : null });
+        alert(I18n.t('project.stagesSaved'));
+        this.refresh();
+        break;
+      }
+      case 'clear-project-stages':
+        Store.updateProject(ds.pid, { stages: null });
+        this.refresh();
+        break;
       case 'delete-project':
         if (confirm(I18n.t('confirm.deleteProject'))) {
           Store.deleteProject(id);

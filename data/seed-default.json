@@ -128,6 +128,7 @@
       "versions": [],
       "stages": [
         "Displays",
+        "Planeamento",
         "Sensores"
       ],
       "archived": false,

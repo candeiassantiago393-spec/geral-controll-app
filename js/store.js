@@ -154,7 +154,7 @@ function inferDisplaySensorStage(item) {
 }
 
 function migrateElevadorDisplaySensorStages(state) {
-  const focus = ['Displays', 'Sensores'];
+  const focus = ['Displays', 'Planeamento', 'Sensores'];
   const migrated = !!state.settings?.elevadorDisplaySensorStagesV1;
 
   for (const project of state.projects) {
