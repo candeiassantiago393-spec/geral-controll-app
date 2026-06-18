@@ -146,7 +146,7 @@ const App = {
       hoursLogged: Utils.fmtHours(projects.reduce((s, p) => s + (p.loggedHours || 0), 0)),
       subscriptions: Store.state.subscriptions.length,
       clients: Store.getClients().length,
-      clientsActive: Store.getClients({ status: 'Ativo' }).length,
+      clientsActive: Store.getClients({ status: 'Active' }).length,
       leads: Store.getClients({ status: 'Lead' }).length,
     };
   },
@@ -1592,6 +1592,7 @@ const App = {
       case 'new-client-project': this.openProjectModal(id); break;
       case 'client-vault': this.navigate('vault'); this.openVaultModal(null, id); break;
       case 'logout': Auth.logout(); break;
+      case 'open-change-password': this.openChangePasswordModal(); break;
       case 'save-firebase-config': {
         const raw = document.getElementById('firebase-config-json')?.value.trim();
         if (!raw) { alert('Paste Firebase config JSON.'); break; }

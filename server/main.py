@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import secrets
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,6 +17,7 @@ from pydantic import BaseModel
 ROOT = Path(__file__).resolve().parent.parent
 CLOUD_PATH = ROOT / "data" / "cloud" / "state.json"
 CLOUD_BACKUP_DIR = ROOT / "data" / "cloud" / "backups"
+AUTH_PATH = ROOT / "data" / "cloud" / "auth.json"
 MAX_CLOUD_BACKUPS = 10
 
 BLOCKED_PREFIXES = (
@@ -83,11 +86,65 @@ def _sync_token() -> str:
     return os.getenv("CLOUD_SYNC_TOKEN", "").strip()
 
 
+def _ensure_cloud_dir() -> None:
+    AUTH_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _hash_password(password: str, salt: str | None = None) -> tuple[str, str]:
+    if not salt:
+        salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt.encode("utf-8"),
+        120_000,
+    )
+    return salt, digest.hex()
+
+
+def _verify_password(password: str, salt: str, stored_hash: str) -> bool:
+    _, digest = _hash_password(password, salt)
+    return digest == stored_hash
+
+
+def _save_auth(data: dict) -> None:
+    _ensure_cloud_dir()
+    AUTH_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def _load_auth() -> dict:
+    _ensure_cloud_dir()
+    if AUTH_PATH.exists():
+        try:
+            data = json.loads(AUTH_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and data.get("syncToken") and data.get("passwordHash") and data.get("salt"):
+                return data
+        except (json.JSONDecodeError, OSError, TypeError):
+            pass
+    password = _app_password()
+    token = _sync_token()
+    if not password or not token:
+        return {}
+    salt, password_hash = _hash_password(password)
+    data = {
+        "salt": salt,
+        "passwordHash": password_hash,
+        "syncToken": token,
+        "updatedAt": _now_iso(),
+    }
+    _save_auth(data)
+    return data
+
+
 def _validate_token(token: str | None) -> bool:
-    expected = _sync_token()
-    if not expected:
+    if not token:
         return False
-    return token == expected
+    auth = _load_auth()
+    expected = auth.get("syncToken")
+    if expected:
+        return token == expected
+    fallback = _sync_token()
+    return bool(fallback and token == fallback)
 
 
 def _data_score(state: dict | None) -> int:
@@ -297,6 +354,11 @@ class LoginIn(BaseModel):
     password: str
 
 
+class ChangePasswordIn(BaseModel):
+    currentPassword: str
+    newPassword: str
+
+
 class CloudStateIn(BaseModel):
     state: dict
     updatedAt: str | None = None
@@ -327,15 +389,36 @@ def health():
 
 @app.post("/api/auth/login")
 def login(body: LoginIn):
-    password = _app_password()
-    if not password:
-        raise HTTPException(503, "APP_PASSWORD not set on server.")
-    token = _sync_token()
-    if not token:
-        raise HTTPException(503, "CLOUD_SYNC_TOKEN not set on server.")
-    if body.password != password:
+    auth = _load_auth()
+    if not auth:
+        raise HTTPException(503, "APP_PASSWORD and CLOUD_SYNC_TOKEN must be set on server.")
+    if not _verify_password(body.password, auth["salt"], auth["passwordHash"]):
         raise HTTPException(401, "Invalid password.")
-    return {"ok": True, "token": token}
+    return {"ok": True, "token": auth["syncToken"]}
+
+
+@app.post("/api/auth/change-password")
+def change_password(body: ChangePasswordIn, x_sync_token: str | None = Header(default=None)):
+    if not _validate_token(x_sync_token):
+        raise HTTPException(401, "Unauthorized.")
+    auth = _load_auth()
+    if not auth:
+        raise HTTPException(503, "Auth not configured.")
+    if not _verify_password(body.currentPassword, auth["salt"], auth["passwordHash"]):
+        raise HTTPException(401, "Current password incorrect.")
+    new_password = (body.newPassword or "").strip()
+    if len(new_password) < 4:
+        raise HTTPException(400, "New password must be at least 4 characters.")
+    salt, password_hash = _hash_password(new_password)
+    new_token = secrets.token_urlsafe(32)
+    auth.update({
+        "salt": salt,
+        "passwordHash": password_hash,
+        "syncToken": new_token,
+        "updatedAt": _now_iso(),
+    })
+    _save_auth(auth)
+    return {"ok": True, "token": new_token, "message": "Password changed. All sessions invalidated."}
 
 
 @app.get("/api/cloud/state")

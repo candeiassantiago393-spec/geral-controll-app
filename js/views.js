@@ -278,22 +278,88 @@ const AppViews = {
 
   renderStats() {
     const stats = App.getFilteredStats();
-    const byArea = Store.state.areas.map((a) => ({
-      area: a, count: App.getFilteredItems({ areaId: a.id }).length,
+    const items = App.filterItems(Store.state.items.filter((i) => !i.archived));
+    const projects = App.filterProjects(Store.getActiveProjects());
+    const a = StatsAnalytics.build(items, projects, {
+      subscriptions: Store.state.subscriptions,
+      clients: Store.state.clients || [],
+      settings: Store.state.settings,
+      vaultEntries: Store.state.vaultEntries || [],
+    });
+
+    const weeklyShort = a.weeklyDone.map((w) => ({ ...w, shortLabel: w.label.replace(/\s\d{4}$/, '') }));
+    const priorityData = a.priorityBreakdown.map((d) => ({
+      ...d,
+      label: d.label.charAt(0).toUpperCase() + d.label.slice(1),
+      color: StatsAnalytics.PRIORITY_COLORS[d.label] || '#00d26a',
     }));
-    const tags = Store.getAllTags().slice(0, 15);
+    const typeData = a.typeBreakdown.map((d) => ({
+      ...d,
+      label: Utils.typeLabel(d.label),
+      color: StatsAnalytics.TYPE_COLORS[Object.keys(ITEM_TYPES).indexOf(d.label)] || '#00d26a',
+    }));
+
+    const kpis = `
+      <div class="stats-grid stats-kpi-grid">
+        ${StatsAnalytics.renderKpi(stats.tasksOpen, I18n.t('stats.openTasks'), { action: { view: 'tasks' } })}
+        ${StatsAnalytics.renderKpi(stats.tasksDone, I18n.t('stats.tasksDone'), { sub: `${a.completionRate}% ${I18n.t('stats.completionRate')}` })}
+        ${StatsAnalytics.renderKpi(stats.tasksWeekDone, I18n.t('stats.thisWeek'), { sub: `ø ${a.avgWeeklyDone}/${I18n.t('stats.week')}` })}
+        ${StatsAnalytics.renderKpi(stats.overdue, I18n.t('stats.overdue'), { action: { view: 'overdue' }, accent: stats.overdue ? 'var(--danger)' : '' })}
+        ${StatsAnalytics.renderKpi(stats.hoursLogged, I18n.t('stats.projectHours'), { sub: a.itemHours ? `+${Utils.fmtHours(a.itemHours)} ${I18n.t('stats.onTasks')}` : '' })}
+        ${StatsAnalytics.renderKpi(stats.inbox, I18n.t('stats.inbox'), { action: { view: 'inbox' } })}
+        ${StatsAnalytics.renderKpi(stats.inboxStreak || Store.state.settings.inboxStreak || 0, I18n.t('stats.inboxStreak'), { sub: I18n.t('stats.days') })}
+        ${StatsAnalytics.renderKpi(a.pomodoroSessions, I18n.t('stats.pomodoro'), { action: { view: 'tools' } })}
+        ${StatsAnalytics.renderKpi(stats.projects, I18n.t('stats.projects'), { action: { view: 'projects' } })}
+        ${StatsAnalytics.renderKpi(stats.clients, I18n.t('stats.clients'), { action: { view: 'clients' } })}
+        ${StatsAnalytics.renderKpi(`${a.subscriptionMonthly.toFixed(0)}€`, I18n.t('stats.subsMonth'), { sub: a.renewalsSoon ? `${a.renewalsSoon} ${I18n.t('stats.renewSoon')}` : '', action: { view: 'subscriptions' } })}
+        ${StatsAnalytics.renderKpi(a.vaultCount, I18n.t('stats.vault'), { action: { view: 'vault' } })}
+      </div>`;
+
+    const charts = `
+      <div class="stats-charts-grid">
+        ${StatsAnalytics.renderPanel(I18n.t('stats.weeklyDone'), StatsAnalytics.renderBarChart(weeklyShort, a.maxWeekly, { ariaLabel: I18n.t('stats.weeklyDone') }))}
+        ${StatsAnalytics.renderPanel(I18n.t('stats.activity'), StatsAnalytics.renderHeatmap(a.activityHeatmap, a.maxActivity))}
+        ${StatsAnalytics.renderPanel(I18n.t('stats.byArea'), StatsAnalytics.renderHBarChart(a.areaBreakdown, null, {
+          labelFn: (d) => `${d.icon} ${d.label}`,
+        }))}
+        ${StatsAnalytics.renderPanel(I18n.t('stats.byPriority'), StatsAnalytics.renderDonut(priorityData))}
+        ${StatsAnalytics.renderPanel(I18n.t('stats.openByKanban'), StatsAnalytics.renderHBarChart(a.kanbanBreakdown, null))}
+        ${StatsAnalytics.renderPanel(I18n.t('stats.byType'), StatsAnalytics.renderDonut(typeData))}
+        ${a.projectHours.length ? StatsAnalytics.renderPanel(I18n.t('stats.hoursByProject'), StatsAnalytics.renderHBarChart(
+          a.projectHours.map((p) => ({ label: p.name, count: p.hours, color: p.color })),
+          a.maxProjectHours
+        )) : ''}
+        ${a.pipelineBreakdown.length ? StatsAnalytics.renderPanel(I18n.t('stats.pipeline'), StatsAnalytics.renderHBarChart(a.pipelineBreakdown, null)) : ''}
+        ${a.clientStatusBreakdown.length ? StatsAnalytics.renderPanel(I18n.t('stats.clientsByStatus'), StatsAnalytics.renderDonut(a.clientStatusBreakdown)) : ''}
+      </div>`;
+
+    const extras = `
+      <div class="stats-extras-grid">
+        ${StatsAnalytics.renderPanel(I18n.t('stats.insights'), `<ul class="stats-insights">
+          <li>${I18n.t('stats.insightCompletion', { rate: a.completionRate })}</li>
+          <li>${I18n.t('stats.insightOverdue', { rate: a.overdueRate })}</li>
+          <li>${I18n.t('stats.insightItems', { n: a.itemsTotal, tasks: a.tasksTotal })}</li>
+          ${a.gradesCount ? `<li>${I18n.t('stats.insightGrades', { avg: a.gradesAvg, n: a.gradesCount })}</li>` : ''}
+          ${stats.blocked ? `<li>${I18n.t('stats.insightBlocked', { n: stats.blocked })}</li>` : ''}
+        </ul>`)}
+        ${StatsAnalytics.renderPanel(I18n.t('stats.popularTags'), a.topTags.length
+          ? `<div class="tag-cloud tag-cloud--ranked">${a.topTags.map(({ tag, count }) =>
+            `<span class="tag tag-click" data-action="filter-tag" data-tag="${Utils.esc(tag)}">#${Utils.esc(tag)} <span class="tag-count">${count}</span></span>`
+          ).join('')}</div>`
+          : `<p class="muted">${I18n.t('stats.noTags')}</p>`)}
+        ${StatsAnalytics.renderPanel(I18n.t('stats.quickLinks'), `<div class="stats-quick-links">
+          <button class="btn btn-sm" data-action="nav" data-view="review">${I18n.t('nav.review')}</button>
+          <button class="btn btn-sm" data-action="nav" data-view="kanban">${I18n.t('nav.kanban')}</button>
+          <button class="btn btn-sm" data-action="nav" data-view="timeline">${I18n.t('nav.timeline')}</button>
+          <button class="btn btn-sm" data-action="nav" data-view="blocked">${I18n.t('nav.blocked')}</button>
+        </div>`)}
+      </div>`;
+
     return `${App.renderScopeBanner()}
-      <div class="section-header"><div class="section-title">Statistics</div></div>
-      <div class="stats-grid">
-        <div class="stat-card"><div class="stat-value">${stats.tasksDone}</div><div class="stat-label">Tasks done</div></div>
-        <div class="stat-card"><div class="stat-value">${stats.tasksWeekDone}</div><div class="stat-label">This week</div></div>
-        <div class="stat-card"><div class="stat-value">${stats.hoursLogged}</div><div class="stat-label">Project hours</div></div>
-        <div class="stat-card"><div class="stat-value">${stats.inboxStreak || Store.state.settings.inboxStreak}</div><div class="stat-label">Inbox streak</div></div>
-      </div>
-      <h3 class="sub-heading">By area</h3>
-      <div class="stats-grid">${byArea.map(({ area, count }) => `<div class="stat-card"><div class="stat-value">${count}</div><div class="stat-label">${area.icon} ${Utils.esc(area.name)}</div></div>`).join('')}</div>
-      <h3 class="sub-heading mt">Popular tags</h3>
-      <div class="tag-cloud">${tags.map((t) => `<span class="tag tag-click" data-action="filter-tag" data-tag="${Utils.esc(t)}">#${Utils.esc(t)}</span>`).join('')}</div>`;
+      <div class="section-header"><div class="section-title">${I18n.t('view.stats')}</div></div>
+      ${kpis}
+      ${charts}
+      ${extras}`;
   },
 
   renderContactCard(item) {
@@ -1250,9 +1316,16 @@ const AppViews = {
             : `<button class="btn btn-sm" data-action="apply-app-update" title="Força recarregar a app do servidor">↻ Recarregar app</button>`}
         </div>
         <p class="muted sm mt">Depois de um deploy, toca em <strong>Verificar</strong>. Se disser que já estás atualizado mas a app parece antiga, usa <strong>Recarregar app</strong> (limpa cache do browser).</p></div>
+      <div class="settings-box mb"><h3>Palavra-passe</h3>
+        <p class="muted mb sm">${CloudSync.isRenderMode?.()
+          ? 'Alterar a palavra-passe desliga todos os telemóveis e PCs. Só a nova palavra-passe funciona.'
+          : CloudSync.isConfigured?.()
+            ? 'Alterar a palavra-passe da conta cloud desliga outras sessões Firebase.'
+            : 'Alterar a palavra-passe deste dispositivo.'}</p>
+        <button class="btn btn-sm btn-primary" data-action="open-change-password">Alterar palavra-passe</button></div>
       <div class="settings-box mb"><h3>Account</h3>
-        <p class="muted mb">${CloudSync.isRenderMode?.() ? 'Render password login · auto-sync every 30s. Face ID unlocks on this device.' : CloudSync.isConfigured() ? 'Cloud login syncs across devices. Face ID works on this device.' : 'Local login on this device only — enable cloud sync above.'}</p>
-        <button class="btn btn-sm btn-ghost danger-left" data-action="logout">Sign out</button></div>
+        <p class="muted mb">${CloudSync.isRenderMode?.() ? 'Login com palavra-passe Render · sync automático · Face ID só neste dispositivo.' : CloudSync.isConfigured() ? 'Cloud login syncs across devices. Face ID works on this device.' : 'Local login on this device only — enable cloud sync above.'}</p>
+        <button class="btn btn-sm btn-ghost danger-left" data-action="logout">Terminar sessão</button></div>
       <div class="settings-box mb"><h3>Data</h3>
         <p class="muted mb sm">${typeof CloudSync !== 'undefined' ? `${CloudSync.dataScore(Store.state)} records on this device` : ''}${CloudSync.hasEmergencyBackup?.() ? ' · local backup available' : ''}</p>
         <div class="btn-row mb">

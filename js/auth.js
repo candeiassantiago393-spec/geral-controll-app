@@ -34,15 +34,27 @@ const Auth = {
     if (remember) localStorage.setItem(this.REMEMBER_KEY, '1');
   },
 
-  logout() {
+  clearSessionFlags() {
     sessionStorage.removeItem(this.SESSION_KEY);
     localStorage.removeItem(this.REMEMBER_KEY);
+  },
+
+  logout() {
+    this.clearSessionFlags();
     if (typeof CloudSync !== 'undefined' && CloudSync.isSignedIn()) {
       CloudSync.signOut();
       location.reload();
       return;
     }
     location.reload();
+  },
+
+  async changeLocalPassword(currentPassword, newPassword) {
+    const user = this.getStoredUsername();
+    const ok = await this.verifyPassword(user, currentPassword);
+    if (!ok) throw new Error('Palavra-passe actual incorrecta.');
+    if (newPassword.length < 4) throw new Error('A nova palavra-passe deve ter pelo menos 4 caracteres.');
+    await this.saveCredentials(user, newPassword);
   },
 
   async sha256(text) {

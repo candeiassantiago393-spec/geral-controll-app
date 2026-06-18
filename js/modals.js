@@ -813,6 +813,73 @@ const AppModals = {
     });
   },
 
+  openChangePasswordModal() {
+    const isRender = typeof CloudSync !== 'undefined' && CloudSync.isRenderMode();
+    const isFirebase = typeof CloudSync !== 'undefined' && CloudSync.isConfigured() && !isRender;
+    const hint = isRender || isFirebase
+      ? 'Todos os dispositivos ficam desligados. Só a nova palavra-passe permite entrar.'
+      : 'Altera a palavra-passe deste dispositivo. Tens de iniciar sessão outra vez.';
+
+    this.openModal(`<div class="modal"><div class="modal-header"><h2>Alterar palavra-passe</h2>
+      <button class="btn btn-ghost btn-icon" data-action="close-modal">✕</button></div>
+      <form id="change-password-form"><div class="modal-body">
+        <p class="muted mb sm">${hint}</p>
+        <div class="form-group">
+          <label>Palavra-passe actual</label>
+          <input class="form-control" type="password" name="current" autocomplete="current-password" required minlength="4">
+        </div>
+        <div class="form-group">
+          <label>Nova palavra-passe</label>
+          <input class="form-control" type="password" name="newPass" autocomplete="new-password" required minlength="4">
+        </div>
+        <div class="form-group">
+          <label>Confirmar nova palavra-passe</label>
+          <input class="form-control" type="password" name="newPass2" autocomplete="new-password" required minlength="4">
+        </div>
+        <p class="login-error hidden" id="change-password-error"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" data-action="close-modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar e sair</button>
+      </div></form></div>`);
+
+    const errEl = document.getElementById('change-password-error');
+    document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.classList.add('hidden');
+      const fd = new FormData(e.target);
+      const current = String(fd.get('current') || '');
+      const newPass = String(fd.get('newPass') || '');
+      const newPass2 = String(fd.get('newPass2') || '');
+      if (newPass !== newPass2) {
+        errEl.textContent = 'As palavras-passe novas não coincidem.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (newPass === current) {
+        errEl.textContent = 'A nova palavra-passe tem de ser diferente da actual.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      try {
+        if (isRender) {
+          if (!CloudSync.isSignedIn()) throw new Error('Inicia sessão primeiro.');
+          await CloudSync.changeRenderPassword(current, newPass);
+        } else if (isFirebase) {
+          await CloudSync.changeFirebasePassword(current, newPass);
+        } else {
+          await Auth.changeLocalPassword(current, newPass);
+        }
+        this.closeModal();
+        alert('Palavra-passe alterada. Inicia sessão com a nova palavra-passe.');
+        Auth.logout();
+      } catch (ex) {
+        errEl.textContent = ex.message || 'Erro ao alterar palavra-passe.';
+        errEl.classList.remove('hidden');
+      }
+    });
+  },
+
   useTemplate(name) {
     const custom = Store.getCustomTemplates().find((t) => t.id === name);
     if (custom) {

@@ -103,7 +103,7 @@ const CloudSync = {
       return { ok: false, source: 'cloud backup', score: 0 };
     }
     try {
-      const r = await fetch('/api/cloud/backups/latest', {
+      const r = await this._renderFetch('/api/cloud/backups/latest', {
         headers: { 'X-Sync-Token': this.getToken() },
       });
       if (!r.ok) return { ok: false, source: 'cloud backup', score: 0 };
@@ -368,6 +368,49 @@ const CloudSync = {
     localStorage.removeItem(this.REMEMBER_TOKEN_KEY);
   },
 
+  handleSessionExpired(message = 'Sessão expirada. Inicia sessão com a palavra-passe.') {
+    this.renderSignOut();
+    if (typeof Auth !== 'undefined') {
+      Auth.clearSessionFlags();
+    }
+    alert(message);
+    location.reload();
+  },
+
+  async _renderFetch(url, options = {}) {
+    const r = await fetch(url, options);
+    if (r.status === 401 && this.isRenderMode()) {
+      this.handleSessionExpired();
+      throw new Error('Session expired');
+    }
+    return r;
+  },
+
+  async changeRenderPassword(currentPassword, newPassword) {
+    const r = await this._renderFetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Sync-Token': this.getToken(),
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || 'Não foi possível alterar a palavra-passe.');
+    }
+    return r.json();
+  },
+
+  async changeFirebasePassword(currentPassword, newPassword) {
+    await this.ensureReady();
+    const user = this._auth?.currentUser;
+    if (!user?.email) throw new Error('Não estás com sessão iniciada.');
+    const cred = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(newPassword);
+  },
+
   async register(email, password) {
     await this.ensureReady();
     const cred = await this._auth.createUserWithEmailAndPassword(email.trim(), password);
@@ -431,7 +474,7 @@ const CloudSync = {
   },
 
   async _fetchRemoteRender() {
-    const r = await fetch('/api/cloud/state', {
+    const r = await this._renderFetch('/api/cloud/state', {
       headers: { 'X-Sync-Token': this.getToken() },
     });
     if (!r.ok) throw new Error('Cloud download failed.');
@@ -439,7 +482,7 @@ const CloudSync = {
   },
 
   async _pushRenderState(state, updatedAt) {
-    const r = await fetch('/api/cloud/state', {
+    const r = await this._renderFetch('/api/cloud/state', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -494,7 +537,7 @@ const CloudSync = {
     if (!this.isSignedIn()) return { changed: false, direction: 'none' };
 
     if (this.isRenderMode()) {
-      const r = await fetch('/api/sync/now', {
+      const r = await this._renderFetch('/api/sync/now', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

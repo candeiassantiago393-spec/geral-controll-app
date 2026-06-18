@@ -1,5 +1,5 @@
 /* Service worker — keep CACHE in sync with app releases */
-const CACHE = 'candeias-v3.3.8';
+const CACHE = 'candeias-v3.3.9';
 
 const NO_CACHE = (url, request) => request.destination === 'script'
   || request.destination === 'style'
