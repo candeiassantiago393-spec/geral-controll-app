@@ -34,7 +34,7 @@ const AppShell = {
       ],
     },
     projects: {
-      icon: '📁',
+      icon: '▣',
       i18n: 'shell.hub.projects',
       defaultView: 'projects',
       tabs: [
@@ -44,7 +44,7 @@ const AppShell = {
       ],
     },
     library: {
-      icon: '▦',
+      icon: '☰',
       i18n: 'shell.hub.library',
       defaultView: 'vault',
       tabs: [
@@ -163,12 +163,14 @@ const AppShell = {
         App.navigate(view, { source: 'hub' });
       });
     }
-    el.innerHTML = Object.entries(this.hubs).map(([id, hub]) => `
+    el.innerHTML = `
+      <div class="nav-section-label" data-i18n="shell.nav.section">${Utils.esc(I18n.t('shell.nav.section'))}</div>
+      ${Object.entries(this.hubs).map(([id, hub]) => `
       <button type="button" class="sidebar-hub-btn ${activeHub === id ? 'active' : ''}" data-hub="${id}">
         <span class="nav-icon">${hub.icon}</span>
         <span>${Utils.esc(I18n.t(hub.i18n))}</span>
       </button>
-    `).join('');
+    `).join('')}`;
   },
 
   renderBreadcrumb() {

@@ -28,22 +28,28 @@
   border-color: var(--border-accent);
 }
 
-/* ─── Sidebar hub shortcuts (desktop) ─── */
+/* ─── Sidebar hub shortcuts ─── */
 .sidebar-hubs {
-  display: none;
+  display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px 12px;
+  gap: 0;
+  padding: 0 0 8px;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.sidebar-hubs .nav-section-label {
+  padding: 12px 18px 6px;
+  margin: 0;
 }
 
 .sidebar-hub-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  width: calc(100% - 16px);
+  margin: 1px 8px;
+  padding: 9px 14px;
+  border-radius: var(--radius);
   border: none;
   background: none;
   color: var(--text-secondary);
@@ -61,7 +67,7 @@
 
 .sidebar-hub-btn.active {
   background: var(--accent-muted);
-  color: var(--accent);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -69,6 +75,15 @@
   width: 18px;
   text-align: center;
   font-size: 12px;
+  opacity: 0.85;
+}
+
+.ui-glyph {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  line-height: 1;
 }
 
 /* ─── Mobile app header ─── */
@@ -99,7 +114,7 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: var(--accent);
+  background: #2a3040;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -230,8 +245,8 @@
 }
 
 .app-tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+  color: var(--text);
+  border-bottom-color: var(--text);
   font-weight: 600;
   background: transparent;
   box-shadow: none;
@@ -406,8 +421,8 @@
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  background: var(--accent);
-  border: none;
+  background: #2a3040;
+  border: 1px solid #3d4454;
   color: #fff;
   font-size: 16px;
   cursor: pointer;
@@ -460,12 +475,12 @@
 }
 
 .bottom-nav-item.active {
-  color: var(--accent);
+  color: var(--text);
 }
 
 .bottom-nav-item.active .bottom-nav-icon {
   background: var(--accent-muted);
-  color: var(--accent);
+  color: var(--text);
 }
 
 .bottom-nav-item--home .bottom-nav-icon {
@@ -476,7 +491,7 @@
 }
 
 .bottom-nav-item--home.active .bottom-nav-icon {
-  background: var(--accent);
+  background: #2a3040;
   color: #fff;
 }
 

@@ -7,15 +7,15 @@
   --bg-hover: #252a34;
   --border: #2a3040;
   --border-subtle: #1f2430;
-  --border-accent: rgba(61, 139, 253, 0.35);
-  --accent: #3d8bfd;
-  --accent-dim: #2a6fd4;
-  --accent-muted: rgba(61, 139, 253, 0.12);
-  --green: #3d8bfd;
-  --green-bright: #6ba3ff;
-  --green-dim: #2a6fd4;
-  --green-glow: rgba(61, 139, 253, 0.12);
-  --green-glow-strong: rgba(61, 139, 253, 0.2);
+  --border-accent: rgba(255, 255, 255, 0.14);
+  --accent: #e8eaef;
+  --accent-dim: #c5cad4;
+  --accent-muted: rgba(255, 255, 255, 0.08);
+  --green: #9aa3b5;
+  --green-bright: #e8eaef;
+  --green-dim: #6b7385;
+  --green-glow: rgba(255, 255, 255, 0.06);
+  --green-glow-strong: rgba(255, 255, 255, 0.1);
   --text: #e8eaef;
   --text-secondary: #9aa3b5;
   --text-muted: #6b7385;
@@ -90,8 +90,8 @@ a:hover {
 }
 
 .sidebar-brand {
-  padding: 24px 20px;
-  border-bottom: 1px solid var(--border);
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .brand-logo {
@@ -103,7 +103,7 @@ a:hover {
 .brand-icon {
   width: 32px;
   height: 32px;
-  background: var(--accent);
+  background: #2a3040;
   border-radius: var(--radius);
   display: flex;
   align-items: center;
@@ -128,8 +128,11 @@ a:hover {
 }
 
 .sidebar-nav {
+  display: none;
+}
+
+.sidebar-hubs {
   flex: 1;
-  padding: 16px 12px;
   overflow-y: auto;
 }
 
@@ -1244,13 +1247,14 @@ a:hover {
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: #2a3040;
   color: #fff;
-  border: none;
+  border: 1px solid #3d4454;
 }
 
 .btn-primary:hover {
-  background: var(--accent-dim);
+  background: #353b4a;
+  border-color: #4a5266;
 }
 
 .btn-ghost {

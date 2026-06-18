@@ -274,9 +274,6 @@ const App = {
   },
 
   bindGlobalEvents() {
-    document.querySelectorAll('.nav-item[data-view]').forEach((el) => {
-      el.addEventListener('click', () => { this.projectDetailId = null; this.navigate(el.dataset.view); });
-    });
     document.getElementById('btn-quick-capture').addEventListener('click', () => this.openQuickCapture());
     document.getElementById('btn-ai-capture')?.addEventListener('click', () => this.openAiAssistant());
     document.getElementById('btn-add').addEventListener('click', () => this.openAddMenu());
@@ -359,9 +356,6 @@ const App = {
       this.currentHub = newHub;
       if (view !== 'clients') this.clientDetailId = null;
       if (view !== 'projects') this.projectDetailId = null;
-      document.querySelectorAll('.nav-item[data-view]').forEach((el) => {
-        el.classList.toggle('active', el.dataset.view === view);
-      });
       const titles = {
         dashboard: ['view.dashboard', 'view.dashboard.sub'],
         inbox: ['view.inbox', 'view.inbox.sub'],
@@ -741,8 +735,12 @@ const App = {
     const stats = Store.getStats();
     const badge = document.getElementById('badge-inbox');
     const overdueBadge = document.getElementById('badge-overdue');
-    if (stats.inbox > 0) { badge.textContent = stats.inbox; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
-    if (stats.overdue > 0) { overdueBadge.textContent = stats.overdue; overdueBadge.classList.remove('hidden'); } else overdueBadge.classList.add('hidden');
+    if (badge) {
+      if (stats.inbox > 0) { badge.textContent = stats.inbox; badge.classList.remove('hidden'); } else badge.classList.add('hidden');
+    }
+    if (overdueBadge) {
+      if (stats.overdue > 0) { overdueBadge.textContent = stats.overdue; overdueBadge.classList.remove('hidden'); } else overdueBadge.classList.add('hidden');
+    }
   },
 
   render() {
