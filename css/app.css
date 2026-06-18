@@ -946,6 +946,16 @@ a:hover {
   margin-bottom: 6px;
 }
 
+.stage-checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.stage-checkbox-grid .checkbox-row {
+  margin: 0;
+}
+
 .checklist-subrow {
   margin-bottom: 4px;
   padding: 8px 10px;

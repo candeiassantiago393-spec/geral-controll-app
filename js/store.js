@@ -21,6 +21,23 @@ function migrateLegacyValue(val, map) {
   return val != null && map[val] != null ? map[val] : val;
 }
 
+function normalizeProjectStages(data) {
+  if (Array.isArray(data?.projectStages)) {
+    return [...new Set(data.projectStages.map((s) => String(s).trim()).filter(Boolean))];
+  }
+  if (data?.projectStage) {
+    return [String(data.projectStage).trim()].filter(Boolean);
+  }
+  return [];
+}
+
+function syncProjectStageFields(item) {
+  const stages = normalizeProjectStages(item);
+  item.projectStages = stages;
+  item.projectStage = stages[0] || '';
+  return item;
+}
+
 function itemDefaults(data = {}) {
   return {
     id: data.id || uid(),
@@ -49,6 +66,7 @@ function itemDefaults(data = {}) {
     linkCategoryId: data.linkCategoryId ?? null,
     equipmentRef: data.equipmentRef || '',
     partNumbers: data.partNumbers || '',
+    projectStages: normalizeProjectStages(data),
     projectStage: data.projectStage || '',
     hoursLogged: data.hoursLogged ?? 0,
     pinned: data.pinned || false,
@@ -117,7 +135,7 @@ function migrateItem(raw) {
   item.kanbanStatus = migrateLegacyValue(item.kanbanStatus, LEGACY_KANBAN_MAP);
   item.workStatus = migrateLegacyValue(item.workStatus, LEGACY_WORK_MAP);
   item.priority = migrateLegacyValue(item.priority, LEGACY_PRIORITY);
-  return item;
+  return syncProjectStageFields(item);
 }
 
 function migrateClient(raw) {
@@ -171,8 +189,13 @@ function migrateElevadorDisplaySensorStages(state) {
       if (item.projectId !== project.id) continue;
       const inferred = inferDisplaySensorStage(item);
       if (!inferred) continue;
-      if (!migrated || !item.projectStage) {
-        item.projectStage = inferred;
+      const current = normalizeProjectStages(item);
+      if (!migrated) {
+        item.projectStages = [inferred];
+        syncProjectStageFields(item);
+      } else if (!current.length) {
+        item.projectStages = [inferred];
+        syncProjectStageFields(item);
       }
     }
   }
@@ -467,7 +490,8 @@ const Store = {
         i.tags.some((t) => t.toLowerCase().includes(q)) ||
         i.contactInfo?.email?.toLowerCase().includes(q) ||
         i.equipmentRef?.toLowerCase().includes(q) ||
-        i.projectStage?.toLowerCase().includes(q)
+        i.projectStage?.toLowerCase().includes(q) ||
+        i.projectStages?.some((s) => s.toLowerCase().includes(q))
       );
     }
 
@@ -501,7 +525,7 @@ const Store = {
   },
 
   addItem(data) {
-    const item = itemDefaults(data);
+    const item = migrateItem({ ...data, id: data.id || uid() });
     if (!data.dueDate && data.body) {
       const detected = Utils.detectDueDate(data.title + ' ' + data.body);
       if (detected) item.dueDate = detected;
@@ -519,6 +543,7 @@ const Store = {
     const item = this.getItem(id);
     if (!item) return null;
     Object.assign(item, updates, { updatedAt: new Date().toISOString() });
+    if ('projectStages' in updates || 'projectStage' in updates) syncProjectStageFields(item);
     if (updates.areaId !== undefined || updates.projectId !== undefined) {
       item.inbox = !item.areaId && !item.projectId;
     }
@@ -990,7 +1015,12 @@ const Store = {
         this.state.items.forEach((i) => { if (i.kanbanStatus === oldVal) i.kanbanStatus = fallback; });
         break;
       case 'projectStages':
-        this.state.items.forEach((i) => { if (i.projectStage === oldVal) i.projectStage = fallback; });
+        this.state.items.forEach((i) => {
+          const stages = this.getItemProjectStages(i);
+          if (!stages.includes(oldVal)) return;
+          i.projectStages = stages.map((s) => (s === oldVal ? fallback : s));
+          syncProjectStageFields(i);
+        });
         this.state.projects.forEach((p) => {
           if (p.stages?.length) p.stages = p.stages.map((s) => (s === oldVal ? fallback : s));
         });
@@ -1020,6 +1050,18 @@ const Store = {
 
   getKanbanColumns() { return this._getConfigList('kanbanColumns'); },
   getProjectStages() { return this._getConfigList('projectStages'); },
+
+  getItemProjectStages(item) {
+    return normalizeProjectStages(item);
+  },
+
+  itemHasProjectStage(item, stage) {
+    return this.getItemProjectStages(item).includes(stage);
+  },
+
+  itemHasAnyProjectStage(item) {
+    return this.getItemProjectStages(item).length > 0;
+  },
 
   getProjectStagesForProject(projectId) {
     const project = projectId ? this.getProject(projectId) : null;

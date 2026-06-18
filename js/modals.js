@@ -44,12 +44,19 @@ const AppModals = {
     const projectId = document.getElementById('layer-project')?.value || item.projectId || '';
     const stages = projectId ? Store.getProjectStagesForProject(projectId) : [];
     if (!stages.length) return '';
-    const selected = document.querySelector('[name=projectStage]')?.value ?? item.projectStage ?? '';
-    return `<div class="form-group" id="stage-field-wrap"><label>${I18n.t('field.projectStage')}</label>
-      <select class="form-control" name="projectStage">
-        <option value="">—</option>
-        ${stages.map((s) => `<option value="${Utils.esc(s)}" ${selected === s ? 'selected' : ''}>${Utils.esc(s)}</option>`).join('')}
-      </select></div>`;
+    const selected = new Set(Store.getItemProjectStages(item));
+    document.querySelectorAll('input[name="projectStages"]:checked')?.forEach((el) => {
+      selected.add(el.value);
+    });
+    return `<div class="form-group" id="stage-field-wrap"><label>${I18n.t('field.projectStages')}</label>
+      <p class="muted sm mb">${I18n.t('field.projectStagesHint')}</p>
+      <div class="stage-checkbox-grid">
+        ${stages.map((s) => `
+          <label class="checkbox-row sm">
+            <input type="checkbox" name="projectStages" value="${Utils.esc(s)}" ${selected.has(s) ? 'checked' : ''}>
+            ${Utils.esc(s)}
+          </label>`).join('')}
+      </div></div>`;
   },
 
   refreshProjectStageField(item = {}) {
@@ -438,7 +445,8 @@ const AppModals = {
       data.tags = Utils.parseTags(data.tags);
       data.duration = data.duration ? parseInt(data.duration, 10) : null;
       data.hoursLogged = data.hoursLogged ? parseFloat(data.hoursLogged) : 0;
-      data.projectStage = data.projectStage || '';
+      data.projectStages = fd.getAll('projectStages').map((s) => String(s).trim()).filter(Boolean);
+      delete data.projectStage;
       data.pinned = !!fd.get('pinned');
       data.contactGroupId = data.contactGroupId || null;
       data.linkCategoryId = data.linkCategoryId || null;

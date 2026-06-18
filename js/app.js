@@ -486,9 +486,9 @@ const App = {
     else if (f === 'overdue') items = items.filter((i) => Utils.isOverdue(i));
     else if (f === 'urgent') items = items.filter((i) => i.priority === 'urgent' || i.priority === 'high');
     if (this.projectStageFilter === this.projectStageFilterNone) {
-      items = items.filter((i) => !i.projectStage);
+      items = items.filter((i) => !Store.itemHasAnyProjectStage(i));
     } else if (this.projectStageFilter) {
-      items = items.filter((i) => i.projectStage === this.projectStageFilter);
+      items = items.filter((i) => Store.itemHasProjectStage(i, this.projectStageFilter));
     }
     return items;
   },

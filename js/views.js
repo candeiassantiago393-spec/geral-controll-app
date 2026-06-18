@@ -7,7 +7,10 @@ const AppViews = {
       const ctx = Store.getArea(item.areaId)?.subContexts?.find((c) => c.id === item.subContextId);
       if (ctx) parts.push(`${ctx.icon} ${ctx.name}`);
     }
-    if (item.projectId && item.projectStage) parts.push(item.projectStage);
+    if (item.projectId) {
+      const stages = Store.getItemProjectStages(item);
+      if (stages.length) parts.push(stages.join(' · '));
+    }
     if (item.dueDate) parts.push(`Due: ${Utils.fmtDate(item.dueDate)}`);
     if (item.duration) parts.push(`${item.duration} min`);
     if (item.hoursLogged) parts.push(Utils.fmtHours(item.hoursLogged));
