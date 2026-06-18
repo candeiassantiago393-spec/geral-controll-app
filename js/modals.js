@@ -6,13 +6,23 @@ const AppModals = {
   },
 
   layerOptions(selected = {}) {
-    const areaId = selected.areaId || '';
+    let areaId = selected.areaId || '';
+    const projectId = selected.projectId || '';
+    if (!areaId && projectId) {
+      areaId = Store.getProject(projectId)?.areaId || '';
+    }
     let projectsHtml = `<option value="">${I18n.t('field.noProject')}</option>`;
     let subCtxHtml = `<option value="">${I18n.t('field.noContext')}</option>`;
     if (areaId) {
+      let projectListed = false;
       Store.getProjectsByArea(areaId).forEach((p) => {
-        projectsHtml += `<option value="${p.id}" ${selected.projectId === p.id ? 'selected' : ''}>${Utils.esc(p.name)}</option>`;
+        if (p.id === projectId) projectListed = true;
+        projectsHtml += `<option value="${p.id}" ${projectId === p.id ? 'selected' : ''}>${Utils.esc(p.name)}</option>`;
       });
+      if (projectId && !projectListed) {
+        const p = Store.getProject(projectId);
+        if (p) projectsHtml += `<option value="${p.id}" selected>${Utils.esc(p.name)}</option>`;
+      }
       Store.getArea(areaId)?.subContexts?.forEach((c) => {
         subCtxHtml += `<option value="${c.id}" ${selected.subContextId === c.id ? 'selected' : ''}>${c.icon} ${Utils.esc(c.name)}</option>`;
       });
@@ -30,8 +40,8 @@ const AppModals = {
     const subCtxSel = document.getElementById('layer-subctx');
     if (!projectSel || !subCtxSel) return;
     const prevProject = projectSel.value;
-    projectSel.innerHTML = '<option value="">— No project —</option>';
-    subCtxSel.innerHTML = '<option value="">— No context —</option>';
+    projectSel.innerHTML = `<option value="">${I18n.t('field.noProject')}</option>`;
+    subCtxSel.innerHTML = `<option value="">${I18n.t('field.noContext')}</option>`;
     if (areaId) {
       Store.getProjectsByArea(areaId).forEach((p) => { projectSel.innerHTML += `<option value="${p.id}">${Utils.esc(p.name)}</option>`; });
       Store.getArea(areaId)?.subContexts?.forEach((c) => { subCtxSel.innerHTML += `<option value="${c.id}">${c.icon} ${Utils.esc(c.name)}</option>`; });
@@ -575,10 +585,36 @@ const AppModals = {
     });
   },
 
+  wireItemModalLayers(presetProjectId = null, item = null) {
+    if (item || !presetProjectId) return;
+    const p = Store.getProject(presetProjectId);
+    if (!p) return;
+    const areaSel = document.getElementById('layer-area');
+    if (areaSel && p.areaId) {
+      areaSel.value = p.areaId;
+      this.updateLayerSelects();
+    }
+    const projSel = document.getElementById('layer-project');
+    if (projSel) projSel.value = presetProjectId;
+    this.refreshProjectStageField({ projectId: presetProjectId });
+  },
+
+  applyFocusProjectDefaults(data) {
+    const focusId = Store.state.settings.focusProjectId;
+    if (!focusId || data.projectId) return data;
+    const p = Store.getProject(focusId);
+    if (!p) return data;
+    data.projectId = focusId;
+    if (!data.areaId && p.areaId) data.areaId = p.areaId;
+    data.inbox = false;
+    return data;
+  },
+
   openItemModal(id = null, presetDate = null, presetProjectId = null, presetType = null) {
     const item = id ? Store.getItem(id) : null;
     if (item) Store.trackRecent(item.id);
     const type = item?.type || presetType || 'note';
+    const layerPreset = item || (presetProjectId ? { projectId: presetProjectId, areaId: Store.getProject(presetProjectId)?.areaId || '' } : {});
 
     this.openModal(`<div class="modal modal-lg"><div class="modal-header"><h2>${item ? 'Edit' : 'New'} item</h2>
       <button class="btn btn-ghost btn-icon" data-action="close-modal">✕</button></div>
@@ -587,7 +623,7 @@ const AppModals = {
         <div class="form-group"><label>${I18n.t('field.priority')}</label><select class="form-control" name="priority">${I18n.selectOptions(Store.getPriorities(), item?.priority)}</select></div></div>
         <div class="form-group"><label>${I18n.t('field.title')}</label><input class="form-control" name="title" required value="${Utils.esc(item?.title || '')}"></div>
         <div class="form-group"><label>${I18n.t('field.content')}</label><textarea class="form-control" name="body" rows="5">${Utils.esc(item?.body || '')}</textarea></div>
-        ${this.layerOptions(item || { projectId: presetProjectId })}
+        ${this.layerOptions(layerPreset)}
         ${this.scheduleDatesFieldHtml(item, presetDate)}
         <div class="form-row"><div class="form-group"><label>${I18n.t('field.duration')}</label><input class="form-control" type="number" name="duration" value="${item?.duration || ''}"></div>
         <div class="form-group"><label>${I18n.t('field.location')}</label><input class="form-control" name="location" value="${Utils.esc(item?.location || '')}"></div></div>
@@ -603,6 +639,7 @@ const AppModals = {
         <button type="submit" class="btn btn-primary">Save</button></div></form></div>`);
 
     this.wireScheduleField();
+    this.wireItemModalLayers(presetProjectId, item);
     document.getElementById('item-type-select')?.addEventListener('change', (e) => {
       document.getElementById('extra-fields').innerHTML = this.extraFields(item, e.target.value);
       document.getElementById('layer-project')?.addEventListener('change', () => this.refreshProjectStageField(item));
@@ -622,6 +659,7 @@ const AppModals = {
       data.pinned = !!fd.get('pinned');
       data.contactGroupId = data.contactGroupId || null;
       data.linkCategoryId = data.linkCategoryId || null;
+      this.applyFocusProjectDefaults(data);
       data.inbox = !data.areaId && !data.projectId;
       const schedule = this.parseScheduleFromForm(fd);
       data.scheduleMode = schedule.scheduleMode;

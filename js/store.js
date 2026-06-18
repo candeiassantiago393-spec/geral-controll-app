@@ -602,6 +602,15 @@ const Store = {
   },
 
   addItem(data) {
+    const focusId = this.state.settings.focusProjectId;
+    if (focusId && !data.projectId && ['task', 'note', 'event', 'reminder', 'checklist'].includes(data.type)) {
+      const p = this.getProject(focusId);
+      if (p) {
+        data.projectId = focusId;
+        if (!data.areaId) data.areaId = p.areaId;
+        data.inbox = false;
+      }
+    }
     const item = migrateItem({ ...data, id: data.id || uid() });
     if (!data.dueDate && data.body) {
       const detected = Utils.detectDueDate(data.title + ' ' + data.body);
