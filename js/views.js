@@ -1129,20 +1129,26 @@ const AppViews = {
     if (!project) return '<p>Project not found</p>';
     const area = Store.getArea(project.areaId);
     let items = Store.getItems({ projectId });
-    const tabs = { overview:'Overview', notes:['note','decision','idea'], tasks:['task','checklist'], events:['event','reminder'], contacts:['contact'], links:['link'], attachments:null, hours:null, versions:null };
-    if (App.projectTab !== 'overview' && App.projectTab !== 'attachments' && App.projectTab !== 'hours' && App.projectTab !== 'versions') {
+    const tabs = { overview:'Overview', wishlist:'Wishlist', notes:['note','decision','idea'], tasks:['task','checklist'], events:['event','reminder'], contacts:['contact'], links:['link'], attachments:null, hours:null, versions:null };
+    if (App.projectTab !== 'overview' && App.projectTab !== 'attachments' && App.projectTab !== 'hours' && App.projectTab !== 'versions' && App.projectTab !== 'wishlist') {
       const types = tabs[App.projectTab];
       if (Array.isArray(types)) items = items.filter((i) => types.includes(i.type));
       items = App.filterProjectItems(items);
       items = App.sortProjectItems(items);
     }
-    const tabHtml = Object.keys(tabs).map((t) => `<button class="tab ${App.projectTab===t?'active':''}" data-tab="${t}">${typeof tabs[t]==='string'?tabs[t]:t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('');
+    const tabHtml = Object.keys(tabs).map((t) => {
+      const labelKey = `project.tab.${t}`;
+      const label = I18n.t(labelKey) !== labelKey ? I18n.t(labelKey) : (typeof tabs[t] === 'string' ? tabs[t] : t.charAt(0).toUpperCase() + t.slice(1));
+      return `<button class="tab ${App.projectTab === t ? 'active' : ''}" data-tab="${t}">${Utils.esc(label)}</button>`;
+    }).join('');
     let body = '';
     if (App.projectTab === 'overview') {
+      const wishlist = project.wishlist || [];
+      const wishDone = wishlist.filter((w) => w.done).length;
       body = `<div class="stats-grid mb">${['task','note','event'].map((tp) => {
         const c = Store.getItems({projectId,type:tp});
         return `<div class="stat-card"><div class="stat-value">${tp==='task'?c.filter(x=>!x.completed).length:c.length}</div><div class="stat-label">${Utils.typeLabel(tp)}</div></div>`;
-      }).join('')}</div>
+      }).join('')}${wishlist.length ? `<div class="stat-card" data-action="proj-tab" data-tab="wishlist" style="cursor:pointer"><div class="stat-value">${wishDone}/${wishlist.length}</div><div class="stat-label">${I18n.t('project.tab.wishlist')}</div></div>` : ''}</div>
       <div class="btn-row mb">
         <button class="btn btn-sm btn-primary" data-action="add-proj-item" data-pid="${projectId}">+ Item</button>
         <button class="btn btn-sm" data-action="edit-project" data-id="${projectId}">${I18n.t('action.edit')}</button>
@@ -1154,6 +1160,8 @@ const AppViews = {
         <button class="btn btn-sm btn-ghost danger-left" data-action="delete-project" data-id="${projectId}">${I18n.t('action.delete')}</button>
       </div>
       ${Store.getItems({projectId}).slice(0,8).map((i)=>this.renderItemCard(i)).join('')}`;
+    } else if (App.projectTab === 'wishlist') {
+      body = this.renderProjectWishlist(project, projectId);
     } else if (App.projectTab === 'attachments') {
       const atts = items.filter((i) => i.attachments?.length);
       body = atts.length ? atts.flatMap((i) => i.attachments.map((a, attIndex) =>
@@ -1184,6 +1192,29 @@ const AppViews = {
       ${project.url?`<a href="${Utils.esc(project.url)}" target="_blank">${Utils.esc(project.url)}</a>`:''}</div></div>
       ${stagesLine}
       <div class="project-tabs">${tabHtml}</div>${body}`;
+  },
+
+  renderProjectWishlist(project, projectId) {
+    const items = project.wishlist || [];
+    const done = items.filter((w) => w.done).length;
+    const open = items.filter((w) => !w.done);
+    const completed = items.filter((w) => w.done);
+    const row = (w) => `
+      <div class="wishlist-row ${w.done ? 'done' : ''}">
+        <button type="button" class="task-check ${w.done ? 'checked' : ''}" data-action="toggle-wishlist-item" data-pid="${projectId}" data-wid="${w.id}">${w.done ? '✓' : ''}</button>
+        <span class="wishlist-text">${Utils.esc(w.text)}</span>
+        <button type="button" class="btn btn-sm btn-ghost danger-left" data-action="delete-wishlist-item" data-pid="${projectId}" data-wid="${w.id}">${I18n.t('action.delete')}</button>
+      </div>`;
+    return `
+      <p class="muted mb">${I18n.t('project.wishlist.desc')}</p>
+      <div class="wishlist-progress mb">${items.length ? `${done}/${items.length} ${I18n.t('project.wishlist.done')}` : I18n.t('project.wishlist.emptyHint')}</div>
+      <div class="wishlist-add mb">
+        <input type="text" class="form-control" id="wishlist-new-input" placeholder="${Utils.esc(I18n.t('project.wishlist.placeholder'))}" maxlength="240">
+        <button type="button" class="btn btn-primary btn-sm" data-action="add-wishlist-item" data-pid="${projectId}">${I18n.t('project.wishlist.add')}</button>
+      </div>
+      ${open.length ? `<div class="section-header"><div class="section-title">${I18n.t('project.wishlist.open')}</div></div>${open.map(row).join('')}` : ''}
+      ${completed.length ? `<div class="section-header mt"><div class="section-title muted">${I18n.t('project.wishlist.completed')}</div></div>${completed.map(row).join('')}` : ''}
+      ${!items.length ? `<div class="empty-state"><p>${I18n.t('project.wishlist.empty')}</p></div>` : ''}`;
   },
 
   renderKanban() {

@@ -80,6 +80,12 @@ function projectDefaults(data = {}) {
     estimatedHours: data.estimatedHours ?? 0,
     loggedHours: data.loggedHours ?? 0,
     versions: data.versions || [],
+    wishlist: (data.wishlist || []).map((w) => ({
+      id: w.id || uid(),
+      text: w.text || '',
+      done: !!w.done,
+      createdAt: w.createdAt || new Date().toISOString(),
+    })),
     stages: data.stages?.length ? data.stages : null,
     archived: data.archived || false,
     createdAt: data.createdAt || new Date().toISOString(),
@@ -544,7 +550,9 @@ const Store = {
     if (!src) return null;
     const copy = projectDefaults({
       ...src, id: uid(), name: src.name + ' (cópia)', archived: false,
-      versions: [], loggedHours: 0, createdAt: new Date().toISOString(),
+      versions: [], loggedHours: 0,
+      wishlist: (src.wishlist || []).map((w) => ({ ...w, id: uid(), done: false })),
+      createdAt: new Date().toISOString(),
     });
     this.state.projects.push(copy);
     this.save();
@@ -576,6 +584,35 @@ const Store = {
     const p = this.getProject(id);
     if (!p) return;
     p.versions.push({ version, date: Utils.todayStr(), notes });
+    this.save();
+  },
+
+  addProjectWishlistItem(projectId, text) {
+    const p = this.getProject(projectId);
+    const trimmed = text?.trim();
+    if (!p || !trimmed) return null;
+    if (!p.wishlist) p.wishlist = [];
+    const item = { id: uid(), text: trimmed, done: false, createdAt: new Date().toISOString() };
+    p.wishlist.push(item);
+    p.updatedAt = new Date().toISOString();
+    this.save();
+    return item;
+  },
+
+  toggleProjectWishlistItem(projectId, itemId) {
+    const p = this.getProject(projectId);
+    const item = p?.wishlist?.find((w) => w.id === itemId);
+    if (!item) return;
+    item.done = !item.done;
+    p.updatedAt = new Date().toISOString();
+    this.save();
+  },
+
+  removeProjectWishlistItem(projectId, itemId) {
+    const p = this.getProject(projectId);
+    if (!p?.wishlist) return;
+    p.wishlist = p.wishlist.filter((w) => w.id !== itemId);
+    p.updatedAt = new Date().toISOString();
     this.save();
   },
 

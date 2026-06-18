@@ -1295,6 +1295,28 @@ const App = {
       case 'add-project': this.openProjectModal(); break;
       case 'log-hours': { const h = parseFloat(prompt('Hours?')); if (h) { Store.logHours(id, h); this.refresh(); } } break;
       case 'add-version': { const v = prompt('Version (e.g. 1.1)?'); const n = prompt('Notes?'); if (v) { Store.addProjectVersion(id, v, n || ''); this.refresh(); } } break;
+      case 'proj-tab':
+        this.projectTab = ds.tab || 'overview';
+        this.refresh();
+        break;
+      case 'add-wishlist-item': {
+        const input = document.getElementById('wishlist-new-input');
+        const text = input?.value?.trim();
+        if (text && ds.pid) {
+          Store.addProjectWishlistItem(ds.pid, text);
+          this.refresh();
+        }
+        break;
+      }
+      case 'toggle-wishlist-item':
+        if (ds.pid && ds.wid) { Store.toggleProjectWishlistItem(ds.pid, ds.wid); this.refresh(); }
+        break;
+      case 'delete-wishlist-item':
+        if (ds.pid && ds.wid && confirm(I18n.t('confirm.deleteWishlistItem'))) {
+          Store.removeProjectWishlistItem(ds.pid, ds.wid);
+          this.refresh();
+        }
+        break;
       case 'use-template': this.useTemplate(ds.template); break;
       case 'new-contact': this.openItemModal(null, null, null, 'contact'); break;
       case 'new-link': this.openItemModal(null, null, null, 'link'); break;

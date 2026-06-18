@@ -906,6 +906,43 @@ a:hover {
   min-width: 0;
 }
 
+.wishlist-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.wishlist-add .form-control {
+  flex: 1;
+}
+
+.wishlist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  background: var(--bg-primary);
+}
+
+.wishlist-row.done .wishlist-text {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.wishlist-text {
+  flex: 1;
+  font-size: 14px;
+}
+
+.wishlist-progress {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 .task-content.completed .task-title {
   text-decoration: line-through;
   opacity: 0.5;

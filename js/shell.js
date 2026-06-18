@@ -14,15 +14,31 @@ const AppShell = {
       primary: true,
       tabs: [
         { view: 'dashboard', i18n: 'shell.tab.overview' },
-        { view: 'today', i18n: 'view.today' },
         { view: 'inbox', i18n: 'view.inbox', badge: 'inbox' },
+        { view: 'today', i18n: 'view.today' },
+        { view: 'overdue', i18n: 'view.overdue', badge: 'overdue' },
         { view: 'calendar', i18n: 'view.calendar' },
         { view: 'timeline', i18n: 'view.timeline' },
+        { view: 'tasks', i18n: 'view.tasks' },
+        { view: 'pinned', i18n: 'view.pinned' },
+        { view: 'blocked', i18n: 'view.blocked' },
+        { view: 'projects', i18n: 'view.projects' },
+        { view: 'review', i18n: 'view.review' },
+        { view: 'archive', i18n: 'view.archive' },
+        { view: 'clients', i18n: 'view.clients' },
         { view: 'kanban', i18n: 'view.kanban' },
+        { view: 'vault', i18n: 'view.vault' },
         { view: 'contacts', i18n: 'view.contacts' },
         { view: 'emails', i18n: 'view.emails' },
-        { view: 'review', i18n: 'view.review' },
+        { view: 'links', i18n: 'view.links' },
+        { view: 'subscriptions', i18n: 'view.subscriptions' },
+        { view: 'templates', i18n: 'view.templates' },
+        { view: 'tools', i18n: 'view.tools' },
         { view: 'stats', i18n: 'view.stats' },
+        { view: 'areas', i18n: 'view.areas' },
+        { view: 'personalization', i18n: 'view.personalization' },
+        { view: 'accessibility', i18n: 'view.accessibility' },
+        { view: 'settings', i18n: 'view.settings' },
       ],
     },
     work: {
@@ -190,7 +206,7 @@ const AppShell = {
       const p = Store.getProject(App.projectDetailId);
       parts.push({ label: I18n.t('view.projects'), current: false });
       if (p) parts.push({ label: p.name, current: false });
-      const tabLabels = { overview: 'Overview', tasks: 'Tasks', notes: 'Notes', events: 'Events', contacts: 'Contacts', links: 'Links', attachments: 'Attachments', hours: 'Hours', versions: 'Versions' };
+      const tabLabels = { overview: 'Overview', wishlist: I18n.t('project.tab.wishlist'), tasks: 'Tasks', notes: 'Notes', events: 'Events', contacts: 'Contacts', links: 'Links', attachments: 'Attachments', hours: 'Hours', versions: 'Versions' };
       parts.push({ label: tabLabels[App.projectTab] || App.projectTab, current: true });
     } else if (App.currentView === 'clients' && App.clientDetailId) {
       const c = Store.getClient(App.clientDetailId);
