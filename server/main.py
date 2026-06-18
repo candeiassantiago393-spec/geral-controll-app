@@ -286,7 +286,28 @@ def _decide_sync(local_state: dict, local_at: str, remote: dict) -> dict:
             "state": local_state,
         }
 
-    # More records wins — avoid overwriting richer data with a newer but smaller cloud copy.
+    # Newer timestamp wins — deletions reduce record count but must still upload.
+    if local_at and remote_at:
+        if local_at > remote_at:
+            payload = {"state": local_state, "updatedAt": local_at, "version": ""}
+            _save_cloud(payload)
+            return {
+                "changed": True,
+                "direction": "push",
+                "message": "This device is newer — uploaded.",
+                "updatedAt": local_at,
+                "state": local_state,
+            }
+        if remote_at > local_at:
+            return {
+                "changed": True,
+                "direction": "pull",
+                "message": "Cloud copy is newer — downloaded.",
+                "updatedAt": remote_at,
+                "state": remote_state,
+            }
+
+    # More records wins when timestamps are missing or tied.
     if local_score > remote_score:
         updated_at = local_at or now
         payload = {"state": local_state, "updatedAt": updated_at, "version": ""}

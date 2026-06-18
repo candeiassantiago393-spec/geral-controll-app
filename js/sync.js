@@ -223,7 +223,29 @@ const CloudSync = {
       };
     }
 
-    // More records wins — never discard a richer local copy because cloud has a newer timestamp.
+    // Newer timestamp wins — deletions reduce record count but must still upload.
+    if (localAt && remoteAt) {
+      if (localAt > remoteAt) {
+        return {
+          action: 'push',
+          state: localState,
+          updatedAt: localAt,
+          direction: 'push',
+          message: 'This device is newer — uploaded.',
+        };
+      }
+      if (remoteAt > localAt) {
+        return {
+          action: 'pull',
+          state: remoteState,
+          updatedAt: remoteAt,
+          direction: 'pull',
+          message: 'Cloud copy is newer — downloaded.',
+        };
+      }
+    }
+
+    // More records wins when timestamps are missing or tied.
     if (localScore > remoteScore) {
       return {
         action: 'push',
@@ -453,6 +475,11 @@ const CloudSync = {
   },
 
   _applyRemoteState(remoteState, remoteAt) {
+    const localAt = Store.state.cloudUpdatedAt || '';
+    if (localAt && remoteAt && localAt > remoteAt) {
+      this.pushToCloud({ force: true }).catch(() => {});
+      return;
+    }
     const localScore = this.dataScore(Store.state);
     const remoteScore = this.dataScore(remoteState);
     if (localScore > remoteScore) {
@@ -600,8 +627,8 @@ const CloudSync = {
     if (!this.isSignedIn()) return;
     clearTimeout(this._uploadTimer);
     this._uploadTimer = setTimeout(() => {
-      this.syncNow().catch((e) => console.warn('Cloud sync failed', e));
-    }, 2000);
+      this.pushToCloud({ force: true }).catch((e) => console.warn('Cloud upload failed', e));
+    }, 800);
   },
 
   startAutoSync() {
