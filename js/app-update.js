@@ -129,6 +129,6 @@ const AppUpdate = {
     if (this.remoteVersion && this.remoteVersion !== APP_VERSION) {
       return `Servidor: v${this.remoteVersion}`;
     }
-    return `Atualizada (v${APP_VERSION})`;
+    return `Atualizada (v${APP_VERSION}) · usa Recarregar se a interface parecer antiga`;
   },
 };

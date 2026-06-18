@@ -105,8 +105,7 @@
     max-height: 90vh;
   }
 
-  .week-grid,
-  .timeline-grid {
+  .week-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
   }
@@ -211,6 +210,10 @@
     overflow-x: hidden;
   }
 
+  .content.view-timeline {
+    overflow-x: auto;
+  }
+
   .dash-grid {
     grid-template-columns: 1fr 1fr;
     gap: 20px;
@@ -241,12 +244,6 @@
   .week-grid {
     display: grid;
     grid-template-columns: repeat(7, minmax(90px, 1fr));
-    overflow-x: auto;
-  }
-
-  .timeline-grid {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(100px, 1fr));
     overflow-x: auto;
   }
 
@@ -445,18 +442,28 @@
     flex-shrink: 0;
   }
 
-  .week-grid,
-  .timeline-grid {
+  .week-grid {
     display: flex;
     overflow-x: auto;
     gap: 10px;
     -webkit-overflow-scrolling: touch;
   }
 
-  .week-col,
-  .timeline-col {
+  .week-col {
     min-width: 140px;
     flex-shrink: 0;
+  }
+
+  .timeline-shell {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .timeline-col {
+    flex: 0 0 200px;
+    width: 200px;
+    min-width: 200px;
+    max-width: 200px;
   }
 
   .timetable-grid {

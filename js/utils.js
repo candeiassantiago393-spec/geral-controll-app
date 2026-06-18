@@ -10,6 +10,23 @@ const Utils = {
     return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   },
 
+  fmtMinutes(min) {
+    const m = parseInt(min, 10);
+    if (!m || m <= 0) return '—';
+    if (m < 60) return `${m}m`;
+    const h = Math.floor(m / 60);
+    const r = m % 60;
+    return r ? `${h}h ${r}m` : `${h}h`;
+  },
+
+  fmtHours(hours) {
+    const h = Number(hours);
+    if (!h || h <= 0) return '0h';
+    if (h < 0.1) return `${Math.round(h * 60)}m`;
+    if (h < 10) return `${h.toFixed(1)}h`;
+    return `${Math.round(h)}h`;
+  },
+
   fmtTime(d) {
     if (!d) return '';
     if (String(d).includes('T')) return String(d).slice(11, 16);

@@ -1174,7 +1174,8 @@ const Store = {
   stopTimer() {
     const t = this.state.settings.activeTimer;
     if (!t) return 0;
-    const hours = (Date.now() - t.startedAt) / 3600000;
+    const startedAt = Number(t.startedAt);
+    const hours = (Date.now() - startedAt) / 3600000;
     const item = this.getItem(t.itemId);
     if (item) this.updateItem(item.id, { hoursLogged: (item.hoursLogged || 0) + hours });
     if (t.projectId) this.logHours(t.projectId, hours);
@@ -1183,10 +1184,22 @@ const Store = {
     return hours;
   },
 
+  cancelTimer() {
+    if (!this.state.settings.activeTimer) return false;
+    this.state.settings.activeTimer = null;
+    this.save();
+    return true;
+  },
+
   getTimerElapsed() {
     const t = this.state.settings.activeTimer;
     if (!t) return 0;
-    return (Date.now() - t.startedAt) / 1000;
+    return (Date.now() - Number(t.startedAt)) / 1000;
+  },
+
+  getActiveTimerItem() {
+    const t = this.state.settings.activeTimer;
+    return t ? this.getItem(t.itemId) : null;
   },
 };
 

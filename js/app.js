@@ -40,6 +40,8 @@ const App = {
   emailFilter: 'all',
   personalizationTab: 'vault',
   areaFiltersCollapsed: false,
+  timelineShowDone: false,
+  timelineExpandedDays: {},
   _tickInterval: null,
 
   init() {
@@ -81,7 +83,7 @@ const App = {
     this._tickInterval = setInterval(() => {
       Pomodoro.tick();
       if (Store.state.settings.activeTimer || Pomodoro.state().running) {
-        if (['tasks', 'today', 'tools'].includes(this.currentView)) this.render();
+        if (['tasks', 'today', 'tools', 'dashboard', 'overdue'].includes(this.currentView)) this.render();
         this.renderWorkspaceBar();
       }
     }, 1000);
@@ -141,7 +143,7 @@ const App = {
       pinned: this.filterItems(Store.getItems({ pinned: true })).length,
       contacts: this.filterItems(Store.getItems({ type: 'contact' })).length,
       links: this.filterItems(Store.getItems({ type: 'link' })).length,
-      hoursLogged: projects.reduce((s, p) => s + (p.loggedHours || 0), 0),
+      hoursLogged: Utils.fmtHours(projects.reduce((s, p) => s + (p.loggedHours || 0), 0)),
       subscriptions: Store.state.subscriptions.length,
       clients: Store.getClients().length,
       clientsActive: Store.getClients({ status: 'Ativo' }).length,
@@ -193,9 +195,12 @@ const App = {
     let extra = '';
     if (timer) {
       const sec = Store.getTimerElapsed();
-      extra = `<span class="workspace-timer">⏱ ${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}</span>`;
+      const item = Store.getActiveTimerItem();
+      const label = item ? Utils.esc(item.title) : I18n.t('timer.task');
+      extra = `<button type="button" class="workspace-timer" data-action="stop-timer" title="${I18n.t('timer.stopHint')}">⏱ ${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')} · ${label}</button>
+        <button type="button" class="workspace-timer-cancel" data-action="cancel-timer" title="${I18n.t('timer.cancelHint')}">✕</button>`;
     } else if (pom.running) {
-      extra = `<span class="workspace-timer">🍅 ${Pomodoro.fmt(Pomodoro.remainingSec())}</span>`;
+      extra = `<button type="button" class="workspace-timer" data-action="pomodoro-stop" title="${I18n.t('timer.pomodoroStop')}">🍅 ${Pomodoro.fmt(Pomodoro.remainingSec())}</button>`;
     }
     bar.innerHTML = `
       <button class="workspace-chip ${!this.workspace ? 'active' : ''}" data-workspace="">All</button>
@@ -211,6 +216,13 @@ const App = {
         this.renderAreaFilters();
         this.renderWorkspaceBar();
         this.refresh();
+      });
+    });
+    bar.querySelectorAll('[data-action]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleAction(el.dataset.action, el.dataset);
       });
     });
   },
@@ -544,7 +556,11 @@ const App = {
         <button class="filter-chip" data-action="edit-school-schedule" title="Edit weekly schedule">✏ Schedule</button>
         <a class="filter-chip fincontrol-link" href="${Utils.esc(finUrl)}" target="_blank" rel="noopener" title="Open FinControl">💶 FinControl</a>`;
     } else if (this.currentView === 'timeline') {
-      bar.innerHTML = `<span class="muted">Bars = estimated task duration</span>`;
+      bar.innerHTML = `
+        <button class="filter-chip ${!this.timelineShowDone ? 'active' : ''}" data-tl-show="open">${I18n.t('timeline.filter.open')}</button>
+        <button class="filter-chip ${this.timelineShowDone ? 'active' : ''}" data-tl-show="all">${I18n.t('timeline.filter.all')}</button>
+        <span class="filter-sep"></span>
+        <span class="muted sm">${I18n.t('timeline.filter.hint')}</span>`;
     } else if (this.currentView === 'inbox') {
       const f = this.inboxFilters;
       const inboxTags = [...new Set(Store.getItems({ inbox: true }).flatMap((i) => i.tags))].slice(0, 6);
@@ -748,6 +764,11 @@ const App = {
       search: () => this.renderSearch(),
     };
     document.getElementById('content').innerHTML = renderers[this.currentView]?.() || '';
+    const content = document.getElementById('content');
+    const stage = document.getElementById('content-stage');
+    const isTimeline = this.currentView === 'timeline';
+    content?.classList.toggle('view-timeline', isTimeline);
+    stage?.classList.toggle('view-timeline', isTimeline);
     this.bindContentEvents();
   },
 
@@ -943,9 +964,14 @@ const App = {
     bar.dataset.delegationBound = '1';
 
     bar.addEventListener('click', (e) => {
-      const el = e.target.closest('[data-period], [data-task-filter], [data-tag], [data-calmode], [data-calview], [data-inbox-type], [data-inbox-priority], [data-inbox-time], [data-inbox-tag], [data-inbox-clear-time], [data-archive-time], [data-archive-clear-time], [data-contact-group], [data-email-filter], [data-action]');
+      const el = e.target.closest('[data-period], [data-task-filter], [data-tag], [data-calmode], [data-calview], [data-tl-show], [data-inbox-type], [data-inbox-priority], [data-inbox-time], [data-inbox-tag], [data-inbox-clear-time], [data-archive-time], [data-archive-clear-time], [data-contact-group], [data-email-filter], [data-action]');
       if (!el) return;
 
+      if (el.dataset.tlShow) {
+        this.timelineShowDone = el.dataset.tlShow === 'all';
+        this.refresh();
+        return;
+      }
       if (el.dataset.period !== undefined) {
         this.filters.period = el.dataset.period;
         this.taskFilter = 'all';
@@ -1266,8 +1292,29 @@ const App = {
       case 'start-timer': Store.startTimer(id); this.refresh(); break;
       case 'stop-timer': {
         const h = Store.stopTimer();
-        alert(`${(h * 60).toFixed(0)} min logged (${h.toFixed(2)}h)`);
+        alert(`${I18n.t('timer.logged')} ${Utils.fmtMinutes(Math.round(h * 60))} (${Utils.fmtHours(h)})`);
         this.refresh();
+        break;
+      }
+      case 'cancel-timer':
+        if (Store.cancelTimer()) {
+          this.refresh();
+        }
+        break;
+      case 'timeline-expand': {
+        const day = ds.day;
+        if (day) {
+          this.timelineExpandedDays[day] = true;
+          this.render();
+        }
+        break;
+      }
+      case 'timeline-collapse': {
+        const day = ds.day;
+        if (day) {
+          delete this.timelineExpandedDays[day];
+          this.render();
+        }
         break;
       }
       case 'pomodoro-start': Pomodoro.start('work'); this.render(); break;
@@ -1585,7 +1632,7 @@ const App = {
         if (newer) {
           alert(`Nova versão disponível: v${AppUpdate.remoteVersion}\n\nToca em "Atualizar para v${AppUpdate.remoteVersion}".`);
         } else if (AppUpdate.remoteVersion && AppUpdate.remoteVersion === APP_VERSION) {
-          alert(`Já tens a versão mais recente (v${APP_VERSION}).`);
+          alert(`Versão no servidor: v${APP_VERSION}.\n\nSe a app ainda parece antiga (ex.: linha temporal desformatada), usa **Definições → Recarregar app** para limpar a cache do browser.`);
         } else {
           alert(`Versão local: v${APP_VERSION}${AppUpdate.remoteVersion ? `\nServidor: v${AppUpdate.remoteVersion}` : '\n(Não foi possível contactar o servidor.)'}`);
         }

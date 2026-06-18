@@ -9,7 +9,7 @@ const AppViews = {
     }
     if (item.dueDate) parts.push(`Due: ${Utils.fmtDate(item.dueDate)}`);
     if (item.duration) parts.push(`${item.duration} min`);
-    if (item.hoursLogged) parts.push(`${item.hoursLogged}h`);
+    if (item.hoursLogged) parts.push(Utils.fmtHours(item.hoursLogged));
     if (item.workStatus && item.workStatus !== 'In progress') parts.push(item.workStatus);
     return parts.join(' · ');
   },
@@ -71,7 +71,8 @@ const AppViews = {
           <div class="task-title">${item.pinned ? '📌 ' : ''}${Utils.esc(item.title)}</div>
           <div class="task-details">${Utils.esc(this.itemMeta(item))}</div>
         </div>
-        ${canCheck && !item.completed ? `<button class="btn btn-sm btn-ghost timer-btn ${isRunning ? 'active' : ''}" data-action="${isRunning ? 'stop-timer' : 'start-timer'}" data-id="${item.id}">${timerLabel}</button>` : ''}
+        ${canCheck && !item.completed ? `<button type="button" class="btn btn-sm btn-ghost timer-btn ${isRunning ? 'active' : ''}" data-action="${isRunning ? 'stop-timer' : 'start-timer'}" data-id="${item.id}" title="${isRunning ? I18n.t('timer.stopHint') : I18n.t('timer.startHint')}">${timerLabel}</button>` : ''}
+        ${isRunning ? `<button type="button" class="btn btn-sm btn-ghost timer-cancel-btn" data-action="cancel-timer" title="${I18n.t('timer.cancelHint')}">✕</button>` : ''}
       </div>`;
   },
 
@@ -112,7 +113,7 @@ const AppViews = {
         </div>
         <div class="insight-card" data-action="nav" data-view="projects">
           <div><div class="insight-value">${stats.projects}</div><div class="insight-label">${I18n.t('view.projects')}</div></div>
-          <div class="insight-hint">${stats.hoursLogged}h ${I18n.t('shell.metric.logged')}</div>
+          <div class="insight-hint">${stats.hoursLogged} ${I18n.t('shell.metric.logged')}</div>
         </div>
       </div>
       <div class="engage-section">
@@ -121,7 +122,7 @@ const AppViews = {
           <div class="engage-card" data-action="nav" data-view="tasks"><div class="engage-icon">⚡</div><div class="engage-val">${openPct}%</div><div class="engage-lbl">${I18n.t('shell.engage.completion')}</div></div>
           <div class="engage-card" data-action="nav" data-view="pinned"><div class="engage-icon">📌</div><div class="engage-val">${pinned.length}</div><div class="engage-lbl">${I18n.t('view.pinned')}</div></div>
           <div class="engage-card" data-action="nav" data-view="review"><div class="engage-icon">📋</div><div class="engage-val">${review.done.length}</div><div class="engage-lbl">${I18n.t('shell.engage.done')}</div></div>
-          <div class="engage-card" data-action="nav" data-view="stats"><div class="engage-icon">📊</div><div class="engage-val">${stats.hoursLogged}h</div><div class="engage-lbl">${I18n.t('shell.metric.hours')}</div></div>
+          <div class="engage-card" data-action="nav" data-view="stats"><div class="engage-icon">📊</div><div class="engage-val">${stats.hoursLogged}</div><div class="engage-lbl">${I18n.t('shell.metric.hours')}</div></div>
         </div>
       </div>
       <div class="shell-cta" data-action="export-backup">
@@ -135,7 +136,7 @@ const AppViews = {
         <div class="stat-card"><div class="stat-value">${stats.tasksWeekDone}</div><div class="stat-label">Done/week</div></div>
         <div class="stat-card" data-action="nav" data-view="overdue"><div class="stat-value">${stats.overdue}</div><div class="stat-label">Overdue</div></div>
         <div class="stat-card" data-action="nav" data-view="projects"><div class="stat-value">${stats.projects}</div><div class="stat-label">Projects</div></div>
-        <div class="stat-card"><div class="stat-value">${stats.hoursLogged}h</div><div class="stat-label">Hours logged</div></div>
+        <div class="stat-card"><div class="stat-value">${stats.hoursLogged}</div><div class="stat-label">Hours logged</div></div>
       </div>`;
     }
     html += '<div class="dash-grid"><div>';
@@ -286,7 +287,7 @@ const AppViews = {
       <div class="stats-grid">
         <div class="stat-card"><div class="stat-value">${stats.tasksDone}</div><div class="stat-label">Tasks done</div></div>
         <div class="stat-card"><div class="stat-value">${stats.tasksWeekDone}</div><div class="stat-label">This week</div></div>
-        <div class="stat-card"><div class="stat-value">${stats.hoursLogged}h</div><div class="stat-label">Project hours</div></div>
+        <div class="stat-card"><div class="stat-value">${stats.hoursLogged}</div><div class="stat-label">Project hours</div></div>
         <div class="stat-card"><div class="stat-value">${stats.inboxStreak || Store.state.settings.inboxStreak}</div><div class="stat-label">Inbox streak</div></div>
       </div>
       <h3 class="sub-heading">By area</h3>
@@ -826,24 +827,59 @@ const AppViews = {
       </div>`;
   },
 
+  renderTimelineBar(task) {
+    const dur = task.duration;
+    const loadPct = Math.min(100, Math.round(((dur || 30) / 480) * 100));
+    const classes = ['timeline-bar'];
+    if (task.completed) classes.push('timeline-bar--done');
+    if (task.priority === 'urgent') classes.push('timeline-bar--urgent');
+    else if (task.priority === 'high') classes.push('timeline-bar--high');
+    return `<div class="${classes.join(' ')}" title="${Utils.esc(task.title)}" data-action="open-item" data-id="${task.id}">
+      <div class="timeline-bar__title">${Utils.esc(task.title)}</div>
+      <div class="timeline-bar__meta">
+        <span class="timeline-bar__dur">${dur ? Utils.fmtMinutes(dur) : '?'}</span>
+        ${task.completed ? `<span class="timeline-bar__done">✓</span>` : ''}
+      </div>
+      <div class="timeline-bar__load" aria-hidden="true"><i style="width:${loadPct}%"></i></div>
+    </div>`;
+  },
+
   renderTimeline() {
     const weeks = Utils.weekDates(App.calendarDate);
     const weekLabel = `${Utils.fmtDate(weeks[0])} — ${Utils.fmtDate(weeks[6])}`;
-    let html = `<div class="section-header"><div class="section-title">Weekly timeline</div>
+    const maxPerDay = 6;
+    let html = `<div class="section-header"><div class="section-title">${I18n.t('view.timeline')}</div>
       <div class="calendar-nav">
-        <button class="btn btn-icon" id="tl-prev">‹</button><span>${weekLabel}</span>
-        <button class="btn btn-icon" id="tl-next">›</button>
-      </div></div><div class="timeline-grid">`;
+        <button class="btn btn-icon" id="tl-prev" title="${I18n.t('timeline.prevWeek')}">‹</button><span>${weekLabel}</span>
+        <button class="btn btn-icon" id="tl-next" title="${I18n.t('timeline.nextWeek')}">›</button>
+      </div></div><div class="timeline-shell"><div class="timeline-grid">`;
     for (const day of weeks) {
-      const tasks = App.getFilteredItems({ date: day, type: 'task' });
-      html += `<div class="timeline-col"><div class="timeline-day ${day === Utils.todayStr() ? 'today' : ''}">${Utils.fmtDate(day)}</div>`;
-      for (const t of tasks) {
-        const w = Math.min(100, Math.max(20, (t.duration || 60) / 5));
-        html += `<div class="timeline-bar" style="width:${w}%" data-action="open-item" data-id="${t.id}">${Utils.esc(t.title)} (${t.duration || '?'}min)</div>`;
-      }
-      html += '</div>';
+      let tasks = App.getFilteredItems({ date: day, type: 'task' });
+      if (!App.timelineShowDone) tasks = tasks.filter((t) => !t.completed);
+      tasks.sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        return (b.duration || 0) - (a.duration || 0) || a.title.localeCompare(b.title);
+      });
+      const expanded = !!App.timelineExpandedDays[day];
+      const hiddenCount = expanded ? 0 : Math.max(0, tasks.length - maxPerDay);
+      const visible = expanded ? tasks : tasks.slice(0, maxPerDay);
+      const totalMin = tasks.reduce((s, t) => s + (t.duration || 0), 0);
+      const isToday = day === Utils.todayStr();
+      html += `<div class="timeline-col">
+        <div class="timeline-day ${isToday ? 'today' : ''}">
+          <span class="timeline-day-label">${Utils.fmtDate(day)}</span>
+          ${totalMin ? `<span class="timeline-day-total">${Utils.fmtMinutes(totalMin)} · ${tasks.length}</span>` : `<span class="timeline-day-total">${tasks.length}</span>`}
+        </div>
+        <div class="timeline-day-body">
+          ${visible.length
+            ? visible.map((t) => this.renderTimelineBar(t)).join('')
+            : `<div class="timeline-empty">${I18n.t('timeline.empty')}</div>`}
+          ${hiddenCount > 0 ? `<button type="button" class="timeline-more-btn" data-action="timeline-expand" data-day="${day}">${I18n.t('timeline.showMore').replace('{n}', hiddenCount)}</button>` : ''}
+          ${expanded && tasks.length > maxPerDay ? `<button type="button" class="timeline-more-btn" data-action="timeline-collapse" data-day="${day}">${I18n.t('timeline.less')}</button>` : ''}
+        </div>
+      </div>`;
     }
-    return html + '</div>';
+    return html + '</div></div>';
   },
 
   renderCalendar() {
@@ -1210,7 +1246,7 @@ const AppViews = {
             ? `<button class="btn btn-sm btn-primary" data-action="apply-app-update">↻ Atualizar para v${Utils.esc(AppUpdate.remoteVersion || 'nova')}</button>`
             : `<button class="btn btn-sm" data-action="apply-app-update" title="Força recarregar a app do servidor">↻ Recarregar app</button>`}
         </div>
-        <p class="muted sm mt">Depois de um deploy no GitHub, toca em <strong>Verificar</strong> e depois <strong>Atualizar</strong>. Se não mudar, usa <strong>Recarregar app</strong>.</p></div>
+        <p class="muted sm mt">Depois de um deploy, toca em <strong>Verificar</strong>. Se disser que já estás atualizado mas a app parece antiga, usa <strong>Recarregar app</strong> (limpa cache do browser).</p></div>
       <div class="settings-box mb"><h3>Account</h3>
         <p class="muted mb">${CloudSync.isRenderMode?.() ? 'Render password login · auto-sync every 30s. Face ID unlocks on this device.' : CloudSync.isConfigured() ? 'Cloud login syncs across devices. Face ID works on this device.' : 'Local login on this device only — enable cloud sync above.'}</p>
         <button class="btn btn-sm btn-ghost danger-left" data-action="logout">Sign out</button></div>
