@@ -937,7 +937,22 @@ a:hover {
   font-size: 14px;
 }
 
-.wishlist-progress {
+.checklist-card .checklist-items {
+  margin: 10px 0 8px;
+}
+
+.checklist-card .checklist-progress {
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+.checklist-subrow {
+  margin-bottom: 4px;
+  padding: 8px 10px;
+}
+
+.wishlist-progress,
+.checklist-progress {
   font-size: 12px;
   color: var(--text-secondary);
   font-weight: 600;

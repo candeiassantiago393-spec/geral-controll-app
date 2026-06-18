@@ -448,7 +448,12 @@ const AppModals = {
         data.contactInfo = { email: data.contactEmail || '', phone: data.contactPhone || '', company: data.contactCompany || '' };
       }
       if (data.checklistText) {
-        data.checklistItems = data.checklistText.split('\n').filter(Boolean).map((text) => ({ text: text.trim(), done: false }));
+        const existing = item?.checklistItems || [];
+        const doneByText = Object.fromEntries(existing.map((c) => [c.text.trim().toLowerCase(), !!c.done]));
+        data.checklistItems = data.checklistText.split('\n').filter(Boolean).map((text) => {
+          const t = text.trim();
+          return { text: t, done: doneByText[t.toLowerCase()] ?? false };
+        });
       }
       const fileInput = document.getElementById('item-attachment');
       let attachments = item?.attachments || [];

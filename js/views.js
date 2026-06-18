@@ -23,6 +23,9 @@ const AppViews = {
         ${item.location ? `<div class="school-room">Room ${Utils.esc(item.location)}</div>` : ''}
       </div>`;
     }
+    if (item.type === 'checklist') {
+      return this.renderChecklistCard(item);
+    }
     const pin = item.pinned ? '<span class="tag" style="background:var(--warning);color:#000">📌</span> ' : '';
     const overdue = Utils.isOverdue(item) ? '<span class="tag" style="background:rgba(255,71,87,.2);color:var(--danger)">overdue</span> ' : '';
     let extra = '';
@@ -34,10 +37,6 @@ const AppViews = {
       if (grp) extra = `<span class="tag contact-group-tag" style="border-color:${grp.color};color:${grp.color}">${grp.icon} ${Utils.esc(grp.name)}</span> ` + extra;
     }
     if (item.type === 'link' && item.url) extra = `<div style="font-size:12px;color:var(--green);margin-top:6px">${Utils.esc(item.url)}</div>`;
-    if (item.type === 'checklist' && item.checklistItems?.length) {
-      const done = item.checklistItems.filter((c) => c.done).length;
-      extra = `<div style="font-size:12px;color:var(--text-muted);margin-top:6px">${done}/${item.checklistItems.length} done</div>`;
-    }
     if (item.attachments?.length) {
       extra += `<div class="attachment-list attachment-list--inline">${item.attachments.map((a, i) => Utils.renderAttachmentChip(a, item.id, i)).join('')}</div>`;
     }
@@ -47,6 +46,35 @@ const AppViews = {
         <div class="item-title">${Utils.esc(item.title)}</div>
         ${item.body ? `<p class="item-body-preview">${Utils.esc(item.body.slice(0, 120))}${item.body.length > 120 ? '…' : ''}</p>` : ''}
         ${extra}
+        <div class="item-meta">${Utils.esc(this.itemMeta(item))}
+          ${item.tags.map((t) => `<span class="tag tag-click" data-action="filter-tag" data-tag="${Utils.esc(t)}">#${Utils.esc(t)}</span>`).join('')}
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-sm" data-action="open-item" data-id="${item.id}">${I18n.t('action.edit')}</button>
+          ${item.archived ? `<button class="btn btn-sm btn-ghost" data-action="unarchive-item" data-id="${item.id}">${I18n.t('action.restore')}</button>` : `<button class="btn btn-sm btn-ghost" data-action="toggle-pin" data-id="${item.id}">${item.pinned ? I18n.t('action.unpin') : I18n.t('action.pin')}</button>
+          <button class="btn btn-sm btn-ghost" data-action="archive-item" data-id="${item.id}">${I18n.t('action.archive')}</button>`}
+          <button class="btn btn-sm btn-ghost danger-left" data-action="delete-item" data-id="${item.id}">${I18n.t('action.delete')}</button>
+        </div>
+      </div>`;
+  },
+
+  renderChecklistCard(item) {
+    const items = item.checklistItems || [];
+    const done = items.filter((c) => c.done).length;
+    const allDone = items.length > 0 && done === items.length;
+    const pin = item.pinned ? '<span class="tag" style="background:var(--warning);color:#000">📌</span> ' : '';
+    const subRow = (c, idx) => `
+      <div class="wishlist-row checklist-subrow ${c.done ? 'done' : ''}">
+        <button type="button" class="task-check ${c.done ? 'checked' : ''}" data-action="toggle-checklist-item" data-id="${item.id}" data-idx="${idx}">${c.done ? '✓' : ''}</button>
+        <span class="wishlist-text">${Utils.esc(c.text)}</span>
+      </div>`;
+    return `
+      <div class="item-card checklist-card ${allDone ? 'completed' : ''}">
+        <div class="item-type">${Utils.typeIcon(item.type)} ${Utils.typeLabel(item.type)} ${pin}</div>
+        <div class="item-title" data-action="open-item" data-id="${item.id}">${Utils.esc(item.title)}</div>
+        ${items.length ? `<div class="checklist-progress muted sm">${done}/${items.length} ${I18n.t('checklist.done')}</div>` : ''}
+        <div class="checklist-items">${items.length ? items.map(subRow).join('') : `<p class="muted sm">${I18n.t('checklist.empty')}</p>`}</div>
+        ${item.body ? `<p class="item-body-preview">${Utils.esc(item.body.slice(0, 120))}${item.body.length > 120 ? '…' : ''}</p>` : ''}
         <div class="item-meta">${Utils.esc(this.itemMeta(item))}
           ${item.tags.map((t) => `<span class="tag tag-click" data-action="filter-tag" data-tag="${Utils.esc(t)}">#${Utils.esc(t)}</span>`).join('')}
         </div>
@@ -1212,7 +1240,11 @@ const AppViews = {
         ? App.renderProjectItemFilters()
         : '';
       const stageBar = App.projectTab === 'tasks' ? App.renderProjectStageFilters(projectId) : '';
-      body = filterBar + stageBar + (items.length ? items.map((i) => (i.type==='task'||i.type==='checklist') ? this.renderTaskRow(i) : this.renderItemCard(i)).join('') : '<div class="empty-state"><p>No items</p></div>');
+      body = filterBar + stageBar + (items.length ? items.map((i) => {
+        if (i.type === 'checklist') return this.renderChecklistCard(i);
+        if (i.type === 'task') return this.renderTaskRow(i);
+        return this.renderItemCard(i);
+      }).join('') : '<div class="empty-state"><p>No items</p></div>');
     }
     const stages = Store.getProjectStagesForProject(projectId);
     const stagesLine = stages.length

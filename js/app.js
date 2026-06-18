@@ -1194,6 +1194,11 @@ const App = {
         this.openItemModal(id);
         break;
       case 'toggle-task': Store.toggleTask(id); this.refresh(); break;
+      case 'toggle-checklist-item': {
+        const idx = parseInt(ds.idx, 10);
+        if (!Number.isNaN(idx)) { Store.toggleChecklistItem(id, idx); this.refresh(); }
+        break;
+      }
       case 'toggle-pin': Store.togglePin(id); this.refresh(); break;
       case 'archive-item': Store.archiveItem(id); this.refresh(); break;
       case 'snooze-item': Store.snoozeItem(id, 1); this.refresh(); break;

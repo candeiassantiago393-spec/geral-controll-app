@@ -550,6 +550,9 @@ const Store = {
     const item = this.getItem(itemId);
     if (!item?.checklistItems?.[idx]) return;
     item.checklistItems[idx].done = !item.checklistItems[idx].done;
+    if (item.checklistItems.length) {
+      item.completed = item.checklistItems.every((c) => c.done);
+    }
     item.updatedAt = new Date().toISOString();
     this.save();
   },
