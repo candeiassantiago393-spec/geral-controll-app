@@ -112,43 +112,36 @@ a:hover {
   font-size: 15px;
   color: #fff;
   overflow: hidden;
-  flex-shrink: 0;
 }
 
-.profile-avatar img {
+.brand-icon.has-photo,
+.app-avatar.has-photo,
+.brand-icon.has-photo-settings {
+  background: var(--bg-secondary);
+}
+
+.profile-photo-img,
+.brand-icon img,
+.app-avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.profile-settings {
+.profile-settings-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
 }
 
-.profile-settings-preview {
-  width: 72px;
-  height: 72px;
-  font-size: 28px;
+.profile-settings-actions {
+  flex: 1;
+  min-width: 0;
 }
 
-.kanban-filters {
-  margin-bottom: 20px;
-}
-
-.kanban-filters .filter-row {
-  margin-bottom: 10px;
-}
-
-.kanban-filters .filter-row:last-child {
-  margin-bottom: 0;
-}
-
-.kanban-proj-select {
-  max-width: 320px;
+.kanban-project-filters {
+  flex-wrap: wrap;
 }
 
 .brand-text h1 {

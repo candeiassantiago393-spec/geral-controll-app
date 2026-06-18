@@ -1,4 +1,14 @@
 const Utils = {
+  profileInitial(name = 'Candeias') {
+    return String(name || 'C').trim()[0]?.toUpperCase() || 'C';
+  },
+
+  renderProfileAvatarContent(settings = {}) {
+    const photo = settings.profilePhoto;
+    if (photo) return `<img src="${photo}" alt="" class="profile-photo-img">`;
+    return this.profileInitial(settings.profileName || 'Candeias');
+  },
+
   esc(str) {
     const d = document.createElement('div');
     d.textContent = str ?? '';

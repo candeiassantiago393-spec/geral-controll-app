@@ -60,12 +60,11 @@ const App = {
     this.bindFilterBarDelegation();
     this.offerClearDemoIfNeeded();
     this.renderWorkspaceBar();
-    this.renderAreaFilters();
     this.renderProfileAvatars();
+    this.renderAreaFilters();
     this.bindAreaFiltersToggle();
     this.updateBadges();
     this.startTickers();
-    this.renderProfileAvatars();
     this.navigate('dashboard', { skipTransition: true });
   },
 
@@ -191,10 +190,49 @@ const App = {
     return this.filterItems(items);
   },
 
+  renderProfileAvatars() {
+    const s = Store.state?.settings || {};
+    const html = Utils.renderProfileAvatarContent(s);
+    ['sidebar-avatar', 'header-avatar'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = html;
+      el.classList.toggle('has-photo', !!s.profilePhoto);
+    });
+    const settingsAvatar = document.getElementById('settings-avatar');
+    if (settingsAvatar) {
+      settingsAvatar.innerHTML = html;
+      settingsAvatar.classList.toggle('has-photo', !!s.profilePhoto);
+    }
+  },
+
+  renderKanbanProjectFilters(projects) {
+    const ws = this.workspace ? Store.getWorkspaces()[this.workspace] : null;
+    const allLabel = ws
+      ? `${I18n.t('kanban.allIn')} ${ws.icon} ${ws.label}`
+      : I18n.t('kanban.allProjects');
+    let html = `<div class="filter-row mb kanban-project-filters">
+      <span class="muted sm">${I18n.t('kanban.project')}:</span>
+      <button type="button" class="filter-chip ${!this.filters.projectId ? 'active' : ''}" data-action="kanban-proj-filter" data-id="">${Utils.esc(allLabel)}</button>`;
+    projects.forEach((p) => {
+      const area = Store.getArea(p.areaId);
+      html += `<button type="button" class="filter-chip ${this.filters.projectId === p.id ? 'active' : ''}" data-action="kanban-proj-filter" data-id="${p.id}">${area?.icon || ''} ${Utils.esc(p.name)}</button>`;
+    });
+    html += '</div>';
+    return html;
+  },
+
+  clearProjectFilterIfOutOfScope() {
+    if (!this.filters.projectId) return;
+    const scoped = this.filterProjects(Store.getActiveProjects());
+    if (!scoped.some((p) => p.id === this.filters.projectId)) {
+      this.filters.projectId = null;
+    }
+  },
+
   renderWorkspaceBar() {
     const bar = document.getElementById('workspace-bar');
     if (!bar) return;
-    bar.classList.toggle('hidden', this.currentView === 'kanban');
     const workspaces = Store.getWorkspaces();
     const pom = Pomodoro.state();
     const timer = Store.state.settings.activeTimer;
@@ -219,8 +257,8 @@ const App = {
           const ids = Store.getWorkspaces()[this.workspace]?.areaIds || [];
           if (!ids.includes(this.filters.areaId)) this.filters.areaId = null;
         }
-        this.syncKanbanProjectFilter();
         this.renderAreaFilters();
+        this.clearProjectFilterIfOutOfScope();
         this.renderWorkspaceBar();
         this.refresh();
       });
@@ -232,68 +270,6 @@ const App = {
         this.handleAction(el.dataset.action, el.dataset);
       });
     });
-  },
-
-  getKanbanScopeProjects() {
-    return this.filterProjects(Store.getActiveProjects());
-  },
-
-  syncKanbanProjectFilter() {
-    if (!this.filters.projectId) return;
-    const projects = this.getKanbanScopeProjects();
-    if (!projects.some((p) => p.id === this.filters.projectId)) {
-      this.filters.projectId = null;
-    }
-  },
-
-  renderKanbanFilters() {
-    const workspaces = Store.getWorkspaces();
-    const projects = this.getKanbanScopeProjects();
-    let projectOptions = `<option value="">${I18n.t('kanban.allProjects')}</option>`;
-    if (!this.workspace) {
-      Object.entries(workspaces).forEach(([wsId, ws]) => {
-        const group = projects.filter((p) => ws.areaIds.includes(p.areaId));
-        if (!group.length) return;
-        projectOptions += `<optgroup label="${ws.icon} ${Utils.esc(ws.label)}">`;
-        projectOptions += group.map((p) =>
-          `<option value="${p.id}" ${this.filters.projectId === p.id ? 'selected' : ''}>${Utils.esc(p.name)}</option>`
-        ).join('');
-        projectOptions += '</optgroup>';
-      });
-    } else {
-      projectOptions += projects.map((p) =>
-        `<option value="${p.id}" ${this.filters.projectId === p.id ? 'selected' : ''}>${Utils.esc(p.name)}</option>`
-      ).join('');
-    }
-    return `<div class="kanban-filters">
-      <div class="filter-row">
-        <button type="button" class="workspace-chip ${!this.workspace ? 'active' : ''}" data-kanban-workspace="">${I18n.t('project.filter.all')}</button>
-        ${Object.entries(workspaces).map(([k, w]) =>
-          `<button type="button" class="workspace-chip ${this.workspace === k ? 'active' : ''}" data-kanban-workspace="${k}">${w.icon} ${Utils.esc(w.label)}</button>`
-        ).join('')}
-      </div>
-      <div class="filter-row">
-        <label class="muted sm" for="kanban-proj-filter">${I18n.t('kanban.project')}:</label>
-        <select class="form-control kanban-proj-select" id="kanban-proj-filter">${projectOptions}</select>
-      </div>
-    </div>`;
-  },
-
-  renderProfileAvatars() {
-    const photo = Store.state.settings.profilePhoto || '';
-    const name = Store.state.settings.displayName || 'Candeias';
-    const initial = (name[0] || 'C').toUpperCase();
-    const html = photo
-      ? `<img src="${photo}" alt="">`
-      : initial;
-    document.querySelectorAll('.profile-avatar').forEach((el) => {
-      el.innerHTML = html;
-      el.classList.toggle('has-photo', !!photo);
-    });
-    const nameEl = document.getElementById('sidebar-profile-name');
-    const headerName = document.getElementById('header-profile-name');
-    if (nameEl) nameEl.textContent = name;
-    if (headerName) headerName.textContent = name;
   },
 
   applyTheme(theme) {
@@ -329,9 +305,9 @@ const App = {
     this.render();
     this.renderAreaFilters();
     this.renderWorkspaceBar();
+    this.renderProfileAvatars();
     this.updateBadges();
     AppShell.render();
-    this.renderProfileAvatars();
     if (['tasks', 'calendar', 'timeline', 'inbox', 'contacts', 'archive'].includes(this.currentView)) this.renderFilterBar();
   },
 
@@ -465,9 +441,8 @@ const App = {
       } else filterBar.classList.add('hidden');
       this.render();
       this.updateBadges();
-    this.renderWorkspaceBar();
-    AppShell.render();
-    this.renderProfileAvatars();
+      this.renderWorkspaceBar();
+      AppShell.render();
       document.getElementById('sidebar').classList.remove('open');
       document.getElementById('sidebar-backdrop')?.classList.remove('open');
     };
@@ -974,15 +949,6 @@ const App = {
         return;
       }
 
-      const wsChip = e.target.closest('[data-kanban-workspace]');
-      if (wsChip && root.contains(wsChip)) {
-        this.workspace = wsChip.dataset.kanbanWorkspace || null;
-        this.syncKanbanProjectFilter();
-        this.renderWorkspaceBar();
-        this.render();
-        return;
-      }
-
       const tab = e.target.closest('.tab[data-tab]');
       if (tab && root.contains(tab)) {
         this.projectTab = tab.dataset.tab || 'overview';
@@ -1080,28 +1046,6 @@ const App = {
     });
 
     root.addEventListener('change', (e) => {
-      if (e.target.id === 'profile-photo-input') {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (file.size > 300000) {
-          alert(I18n.t('settings.profile.photoTooLarge'));
-          e.target.value = '';
-          return;
-        }
-        const reader = new FileReader();
-        reader.onload = () => {
-          Store.state.settings.profilePhoto = reader.result;
-          Store.save();
-          this.renderProfileAvatars();
-          if (this.currentView === 'settings') this.render();
-        };
-        reader.readAsDataURL(file);
-        return;
-      }
-      if (e.target.id === 'kanban-proj-filter') {
-        this.filters.projectId = e.target.value || null;
-        this.render();
-      }
       if (e.target.id === 'focus-select') {
         Store.state.settings.focusProjectId = e.target.value || null;
         Store.save();
@@ -1774,21 +1718,6 @@ const App = {
         break;
       }
       case 'set-theme': this.applyTheme(ds.theme); this.render(); break;
-      case 'save-profile': {
-        const name = document.getElementById('profile-display-name')?.value.trim();
-        if (name) Store.state.settings.displayName = name;
-        Store.save();
-        this.renderProfileAvatars();
-        AppShell.render();
-        alert(I18n.t('settings.profile.saved'));
-        break;
-      }
-      case 'remove-profile-photo':
-        Store.state.settings.profilePhoto = '';
-        Store.save();
-        this.renderProfileAvatars();
-        this.refresh();
-        break;
       case 'set-language':
         Store.state.settings.language = ds.language === 'pt' ? 'pt' : 'en';
         Store.save();
@@ -1797,6 +1726,31 @@ const App = {
         break;
       case 'save-search': { const name = prompt('Search name?'); if (name) { Store.addSavedSearch(name, { q: this.searchQuery, type: this.searchType }); alert('Saved!'); } } break;
       case 'proj-filter': this.projectFilter = ds.filter; this.render(); break;
+      case 'kanban-proj-filter':
+        this.filters.projectId = ds.id || null;
+        this.render();
+        break;
+      case 'save-profile-photo': {
+        const inp = document.getElementById('profile-photo-input');
+        const file = inp?.files?.[0];
+        if (!file) { alert(I18n.t('settings.profile.pick')); break; }
+        if (file.size > 300000) { alert(I18n.t('settings.profile.tooLarge')); break; }
+        const reader = new FileReader();
+        reader.onload = () => {
+          Store.state.settings.profilePhoto = reader.result;
+          Store.save();
+          this.renderProfileAvatars();
+          this.render();
+        };
+        reader.readAsDataURL(file);
+        break;
+      }
+      case 'remove-profile-photo':
+        Store.state.settings.profilePhoto = null;
+        Store.save();
+        this.renderProfileAvatars();
+        this.render();
+        break;
       case 'proj-item-type-filter':
         this.projectItemTypeFilter = ds.type || null;
         this.render();

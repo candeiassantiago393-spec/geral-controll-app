@@ -1317,15 +1317,18 @@ const AppViews = {
   },
 
   renderKanban() {
-    const scopedProjects = App.getKanbanScopeProjects();
+    const scopedProjects = App.filterProjects(Store.getActiveProjects());
     const projectIds = new Set(scopedProjects.map((p) => p.id));
     let tasks = Store.state.items.filter((i) =>
       i.type === 'task' && !i.archived && (i.projectId ? projectIds.has(i.projectId) : !!i.kanbanStatus)
     );
     tasks = App.filterItems(tasks);
     if (App.filters.projectId) tasks = tasks.filter((t) => t.projectId === App.filters.projectId);
-    return `<div class="section-header"><div class="section-title">${I18n.t('view.kanban')}</div></div>
-      ${App.renderKanbanFilters()}
+    const ws = App.workspace ? Store.getWorkspaces()[App.workspace] : null;
+    return `${App.renderScopeBanner()}
+      <div class="section-header"><div class="section-title">${I18n.t('view.kanban')}</div></div>
+      ${ws ? `<p class="muted sm mb">${I18n.t('kanban.inWorkspace').replace('{ws}', `${ws.icon} ${ws.label}`)}</p>` : `<p class="muted sm mb">${I18n.t('kanban.pickWorkspace')}</p>`}
+      ${App.renderKanbanProjectFilters(scopedProjects)}
       <div class="kanban-board">${Store.getKanbanColumns().map((col) => {
         const cols = Store.getKanbanColumns();
         const colTasks = tasks.filter((t) => t.kanbanStatus === col);
@@ -1388,21 +1391,15 @@ const AppViews = {
   renderSettings() {
     const s = Store.state.settings;
     const lang = s.language || 'en';
-    const displayName = s.displayName || 'Candeias';
     return `<div class="section-header"><div class="section-title">${I18n.t('view.settings')}</div></div>
-      <div class="settings-box mb"><h3>${I18n.t('settings.profile.title')}</h3>
+      <div class="settings-box mb"><h3>${I18n.t('settings.profile')}</h3>
         <p class="muted mb">${I18n.t('settings.profile.desc')}</p>
-        <div class="profile-settings">
-          <div class="brand-icon profile-avatar profile-settings-preview has-photo-${!!s.profilePhoto}" id="settings-profile-preview">${s.profilePhoto ? `<img src="${s.profilePhoto}" alt="">` : (displayName[0] || 'C').toUpperCase()}</div>
-          <div>
-            <div class="form-group"><label>${I18n.t('settings.profile.name')}</label>
-              <input class="form-control" type="text" id="profile-display-name" value="${Utils.esc(displayName)}" maxlength="40"></div>
-            <div class="form-group"><label>${I18n.t('settings.profile.photo')}</label>
-              <input type="file" class="form-control" id="profile-photo-input" accept="image/jpeg,image/png,image/webp,image/gif"></div>
-            <div class="btn-row">
-              <button type="button" class="btn btn-sm btn-primary" data-action="save-profile">${I18n.t('action.save')}</button>
-              ${s.profilePhoto ? `<button type="button" class="btn btn-sm" data-action="remove-profile-photo">${I18n.t('settings.profile.removePhoto')}</button>` : ''}
-            </div>
+        <div class="profile-settings-row mb">
+          <div class="brand-icon lg has-photo-settings" id="settings-avatar">${Utils.renderProfileAvatarContent(s)}</div>
+          <div class="profile-settings-actions">
+            <input type="file" class="form-control" id="profile-photo-input" accept="image/jpeg,image/png,image/webp">
+            <button type="button" class="btn btn-sm mt" data-action="save-profile-photo">${I18n.t('settings.profile.save')}</button>
+            ${s.profilePhoto ? `<button type="button" class="btn btn-sm btn-ghost mt" data-action="remove-profile-photo">${I18n.t('settings.profile.remove')}</button>` : ''}
           </div>
         </div></div>
       <div class="settings-box mb"><h3>${I18n.t('settings.language')}</h3>
@@ -1496,7 +1493,7 @@ const AppViews = {
           <button class="btn btn-sm btn-ghost" data-action="clear-all-data">🗑 Clear all — start fresh</button>
           <button class="btn btn-sm btn-ghost" data-action="load-demo">↺ Load demo examples</button>
         </div></div>
-      <div class="settings-box about-box"><div class="brand-icon lg profile-avatar">${s.profilePhoto ? `<img src="${s.profilePhoto}" alt="">` : (displayName[0] || 'C').toUpperCase()}</div><h2>${Utils.esc(displayName)}</h2><p class="green">candeias.dev</p>
+      <div class="settings-box about-box"><div class="brand-icon lg" id="settings-about-avatar">${Utils.renderProfileAvatarContent(s)}</div><h2>Candeias</h2><p class="green">candeias.dev</p>
       <p class="muted">Organize. Build. Live.</p><p>Version ${APP_VERSION}</p>
       <a href="https://candeias.dev" target="_blank" class="btn btn-sm mt">Visit site</a></div>`;
   },
