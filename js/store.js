@@ -4,7 +4,7 @@ function uid() {
 
 const LEGACY_KANBAN_MAP = {
   'A fazer': 'To do', 'Hoje': 'Today', 'Em curso': 'In progress',
-  'Bloqueado': 'Blocked', 'Feito': 'Done',
+  'À espera': 'Waiting', 'Bloqueado': 'Blocked', 'Feito': 'Done',
 };
 const LEGACY_WORK_MAP = {
   'Em curso': 'In progress', 'À espera': 'Waiting', 'Bloqueado': 'Blocked', 'Concluído': 'Completed',
@@ -243,6 +243,17 @@ function migrateElevadorDisplaySensorStages(state) {
   }
 }
 
+function migrateKanbanWaitingColumn(state) {
+  if (state.settings.kanbanWaitingColumnV1) return;
+  const cols = state.settings.kanbanColumns;
+  if (!cols.includes('Waiting')) {
+    const blockedIdx = cols.indexOf('Blocked');
+    if (blockedIdx >= 0) cols.splice(blockedIdx, 0, 'Waiting');
+    else cols.push('Waiting');
+  }
+  state.settings.kanbanWaitingColumnV1 = true;
+}
+
 function migrateState(raw) {
   if (!raw) return defaultState();
   if (!raw.version || raw.version < 3) {
@@ -284,6 +295,7 @@ function migrateState(raw) {
   state.vaultUnlocked = false;
   state.grades = raw.grades || [];
   migrateElevadorDisplaySensorStages(state);
+  migrateKanbanWaitingColumn(state);
   return state;
 }
 
@@ -387,12 +399,16 @@ const Store = {
   },
 
   getProjectsByClientId(clientId) {
-    return this.state.projects.filter((p) => p.clientId === clientId && !p.archived);
+    let projects = this.state.projects.filter((p) => p.clientId === clientId && !p.archived);
+    if (this.state.settings.focusProjectId) {
+      projects = projects.filter((p) => p.id === this.state.settings.focusProjectId);
+    }
+    return projects;
   },
 
   getItemsByClientId(clientId) {
     const pids = this.getProjectsByClientId(clientId).map((p) => p.id);
-    return this.state.items.filter((i) => pids.includes(i.projectId) && !i.archived);
+    return this.getItems().filter((i) => pids.includes(i.projectId));
   },
 
   getVaultByClientId(clientId) {
@@ -466,16 +482,24 @@ const Store = {
   },
 
   getActiveProjects() {
-    return this.state.projects.filter((p) => !p.archived);
+    let projects = this.state.projects.filter((p) => !p.archived);
+    if (this.state.settings.focusProjectId) {
+      projects = projects.filter((p) => p.id === this.state.settings.focusProjectId);
+    }
+    return projects;
   },
 
   getArchivedProjects() {
-    return this.state.projects.filter((p) => p.archived);
+    let projects = this.state.projects.filter((p) => p.archived);
+    if (this.state.settings.focusProjectId) {
+      projects = projects.filter((p) => p.id === this.state.settings.focusProjectId);
+    }
+    return projects;
   },
 
   getAllTags() {
     const tags = new Set();
-    this.state.items.forEach((i) => i.tags.forEach((t) => tags.add(t)));
+    this.getItems().forEach((i) => i.tags.forEach((t) => tags.add(t)));
     return [...tags].sort();
   },
 
@@ -564,6 +588,11 @@ const Store = {
         Utils.itemOccursOnDate(i, day) ||
         i.snoozedUntil === day
       );
+    }
+
+    if (this.state.settings.focusProjectId && !filter.skipFocus) {
+      const focusId = this.state.settings.focusProjectId;
+      items = items.filter((i) => i.projectId === focusId);
     }
 
     return items.sort((a, b) => {
@@ -1100,6 +1129,13 @@ const Store = {
   },
 
   getKanbanColumns() { return this._getConfigList('kanbanColumns'); },
+
+  getKanbanColumnForItem(item, cols = null) {
+    const columns = cols || this.getKanbanColumns();
+    if (columns.includes(item.kanbanStatus)) return item.kanbanStatus;
+    if (item.workStatus === 'Waiting' && columns.includes('Waiting')) return 'Waiting';
+    return item.kanbanStatus || columns[0] || 'To do';
+  },
   getProjectStages() { return this._getConfigList('projectStages'); },
 
   getItemProjectStages(item) {

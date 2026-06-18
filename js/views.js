@@ -13,10 +13,10 @@ const AppViews = {
     }
     const dates = Utils.itemScheduleDates(item);
     if (dates.length) parts.push(Utils.fmtScheduleDates(dates));
-    else if (item.dueDate) parts.push(`Due: ${Utils.fmtDate(item.dueDate)}`);
+    else if (item.dueDate) parts.push(`${I18n.t('field.due')}: ${Utils.fmtDate(item.dueDate)}`);
     if (item.duration) parts.push(`${item.duration} min`);
     if (item.hoursLogged) parts.push(Utils.fmtHours(item.hoursLogged));
-    if (item.workStatus && item.workStatus !== 'In progress') parts.push(item.workStatus);
+    if (item.workStatus && item.workStatus !== 'In progress') parts.push(I18n.enum(item.workStatus));
     return parts.join(' · ');
   },
 
@@ -116,16 +116,16 @@ const AppViews = {
     const show = (k) => widgets.includes(k);
     const pinned = App.getFilteredItems({ pinned: true }).slice(0, 5);
     const overdue = App.getFilteredItems({ overdue: true });
-    const devStage = Store.getPipelineStages().find((s) => s.toLowerCase().includes('desenvolv')) || 'In development';
-    const devProjects = App.filterProjects(Store.state.projects.filter((p) => p.areaId === 'area-freelance' && p.pipeline === devStage));
+    const devStage = Store.getPipelineStages().find((s) => /develop|desenvolv/i.test(s)) || 'In development';
+    const devProjects = App.filterProjects(Store.state.projects.filter((p) => !p.archived && p.pipeline === devStage));
     const recent = App.filterItems(Store.state.settings.recentItems.map((id) => Store.getItem(id)).filter(Boolean)).slice(0, 5);
     const review = App.getFilteredWeeklyReview();
 
     let html = App.renderScopeBanner();
     if (show('banners')) {
       const emptyScore = typeof CloudSync !== 'undefined' ? CloudSync.dataScore(Store.state) : 0;
-      html += `${stats.overdue > 0 ? `<div class="overdue-banner">⚠ ${stats.overdue} overdue task(s) · <a href="#" data-action="nav" data-view="overdue">View all</a></div>` : ''}
-      ${stats.inbox > 0 ? `<div class="info-banner">📥 ${stats.inbox} no Inbox · <a href="#" data-action="nav" data-view="inbox">Classify</a></div>` : ''}
+      html += `${stats.overdue > 0 ? `<div class="overdue-banner">⚠ ${I18n.t('dash.overdueBanner', { n: stats.overdue })} · <a href="#" data-action="nav" data-view="overdue">${I18n.t('dash.viewAll')}</a></div>` : ''}
+      ${stats.inbox > 0 ? `<div class="info-banner">📥 ${I18n.t('dash.inboxBanner', { n: stats.inbox })} · <a href="#" data-action="nav" data-view="inbox">${I18n.t('dash.classify')}</a></div>` : ''}
       ${emptyScore === 0 ? `<div class="overdue-banner" style="border-color:#f59e0b">⚠ App looks empty · <a href="#" data-action="restore-my-data">Recover my data</a></div>` : ''}
       ${Store.state.settings.fullDemoLoaded ? `<div class="info-banner" style="opacity:0.85">💡 Demo data loaded · <a href="#" data-action="clear-all-data">Clear and start fresh</a></div>` : ''}`;
     }
@@ -175,23 +175,23 @@ const AppViews = {
     }
     html += '<div class="dash-grid"><div>';
     if (show('pinned') && pinned.length) {
-      html += `<div class="section-header"><div class="section-title">📌 Pinned</div></div>${pinned.map((i) => this.renderItemCard(i)).join('')}`;
+      html += `<div class="section-header"><div class="section-title">📌 ${I18n.t('dash.pinned')}</div></div>${pinned.map((i) => this.renderItemCard(i)).join('')}`;
     }
     if (show('recent')) {
-      html += `<div class="section-header"><div class="section-title">Recentes</div></div>
+      html += `<div class="section-header"><div class="section-title">${I18n.t('dash.recent')}</div></div>
         ${recent.length ? recent.map((i) => this.renderItemCard(i)).join('') : App.getFilteredItems().slice(0, 4).map((i) => this.renderItemCard(i)).join('')}`;
     }
     html += '</div><div>';
     if (show('dev')) {
-      html += `<div class="section-header"><div class="section-title">candeias.dev — In dev</div></div>
-        ${devProjects.map((p) => this.renderProjectMini(p)).join('') || '<p class="muted">No projects in dev</p>'}`;
+      html += `<div class="section-header"><div class="section-title">${I18n.t('dash.inDev')}</div></div>
+        ${devProjects.map((p) => this.renderProjectMini(p)).join('') || `<p class="muted">${I18n.t('dash.noProjectsInDev')}</p>`}`;
     }
     if (show('overdue') && overdue.length) {
-      html += `<div class="section-header mt"><div class="section-title danger">Overdue</div></div>${overdue.slice(0, 3).map((i) => this.renderTaskRow(i)).join('')}`;
+      html += `<div class="section-header mt"><div class="section-title danger">${I18n.t('view.overdue')}</div></div>${overdue.slice(0, 3).map((i) => this.renderTaskRow(i)).join('')}`;
     }
     if (show('review')) {
-      html += `<div class="section-header mt"><div class="section-title">Weekly review</div><button class="btn btn-sm" data-action="nav" data-view="review">Open</button></div>
-        <p class="muted">${review.done.length} completed · ${review.open.length} open · ${review.inbox.length} inbox</p>`;
+      html += `<div class="section-header mt"><div class="section-title">${I18n.t('dash.weeklyReview')}</div><button class="btn btn-sm" data-action="nav" data-view="review">${I18n.t('dash.open')}</button></div>
+        <p class="muted">${review.done.length} ${I18n.t('dash.completed').toLowerCase()} · ${review.open.length} ${I18n.t('project.filter.open').toLowerCase()} · ${review.inbox.length} inbox</p>`;
     }
     html += `</div></div>
       <footer class="app-footer"><a href="https://candeias.dev" target="_blank" rel="noopener">candeias.dev</a> · Candeias v${APP_VERSION}</footer>`;
@@ -208,7 +208,7 @@ const AppViews = {
     return `<div class="project-card mini" data-action="open-project" data-id="${p.id}">
       <div class="project-header"><div class="project-color" style="background:${p.color}"></div>
       <div><div class="project-name">${Utils.esc(p.name)}</div><div class="project-client">${Utils.esc(p.client)}</div></div></div>
-      ${p.pipeline ? `<span class="pipeline-badge">${Utils.esc(p.pipeline)}</span>` : ''}
+      ${p.pipeline ? `<span class="pipeline-badge">${Utils.esc(I18n.enum(p.pipeline))}</span>` : ''}
       ${p.paymentStatus ? `<span class="tag">${Utils.esc(p.paymentStatus)}</span>` : ''}
     </div>`;
   },
@@ -219,8 +219,9 @@ const AppViews = {
     const hasFilters = App.inboxFilters.type !== 'all' || App.inboxFilters.priority !== 'all'
       || App.inboxFilters.tag || App.inboxFilters.timeRange !== 'all'
       || App.inboxFilters.pickDate || App.inboxFilters.pickMonth || App.inboxFilters.pickYear;
-    const snoozed = Store.state.items.filter((i) => i.snoozedUntil && i.snoozedUntil > Utils.todayStr());
+    const snoozed = App.filterItems(Store.state.items.filter((i) => i.snoozedUntil && i.snoozedUntil > Utils.todayStr()));
     return `
+      ${App.renderScopeBanner()}
       <div class="section-header"><div class="section-title">Inbox (${items.length}${hasFilters ? ` of ${allItems.length}` : ''})</div>
         <button class="btn btn-sm btn-primary" data-action="quick-ultra">⚡ Ultra-fast</button></div>
       ${hasFilters ? `<div class="info-banner">Active filters · <a href="#" data-action="clear-inbox-filters">Clear filters</a></div>` : ''}
@@ -316,7 +317,7 @@ const AppViews = {
 
   renderStats() {
     const stats = App.getFilteredStats();
-    const items = App.filterItems(Store.state.items.filter((i) => !i.archived));
+    const items = Store.getItems();
     const projects = App.filterProjects(Store.getActiveProjects());
     const a = StatsAnalytics.build(items, projects, {
       subscriptions: Store.state.subscriptions,
@@ -1124,7 +1125,7 @@ const AppViews = {
     const year = App.calendarDate.getFullYear();
     const month = App.calendarDate.getMonth();
     const lastDay = new Date(year, month + 1, 0).getDate();
-    let items = Store.state.items.filter((i) => Utils.itemScheduleDates(i).length);
+    let items = Store.getItems().filter((i) => Utils.itemScheduleDates(i).length);
     if (schedule?.enabled) {
       for (let d = 1; d <= lastDay; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -1153,11 +1154,9 @@ const AppViews = {
     else items = App.getFilteredItems({ type: 'task', snoozed: false });
     if (App.filters.subContextId) items = items.filter((i) => i.subContextId === App.filters.subContextId);
     if (App.filters.tag) items = items.filter((i) => i.tags.includes(App.filters.tag));
-    if (Store.state.settings.focusProjectId) items = items.filter((i) => i.projectId === Store.state.settings.focusProjectId);
     const open = items.filter((i) => !i.completed);
     const done = items.filter((i) => i.completed);
     return `${App.renderScopeBanner()}
-      ${Store.state.settings.focusProjectId ? `<div class="info-banner">Focus mode: ${Utils.esc(Store.getProject(Store.state.settings.focusProjectId)?.name)} · <a href="#" data-action="clear-focus">Exit</a></div>` : ''}
       <div class="section-header"><div class="section-title">${open.length} open · ${done.length} completed</div></div>
       ${open.map((i) => this.renderTaskRow(i)).join('')}
       ${done.length ? `<div class="section-header mt"><div class="section-title muted">Completed</div></div>${done.map((i) => this.renderTaskRow(i)).join('')}` : ''}
@@ -1183,7 +1182,7 @@ const AppViews = {
           ${projs.map((p) => `<div class="project-card" data-action="open-project" data-id="${p.id}" style="cursor:pointer">
             <div class="project-header"><div class="project-color" style="background:${p.color}"></div>
             <div><div class="project-name">${Utils.esc(p.name)}</div><div class="project-client">${Utils.esc(p.client)} ${p.stack?`· ${Utils.esc(p.stack)}`:''}</div></div></div>
-            ${p.pipeline?`<span class="pipeline-badge">${Utils.esc(p.pipeline)}</span>`:''}
+            ${p.pipeline?`<span class="pipeline-badge">${Utils.esc(I18n.enum(p.pipeline))}</span>`:''}
             ${p.paymentStatus?`<span class="tag">${Utils.esc(p.paymentStatus)}</span>`:''}
             <div class="muted mt">${Store.getItems({projectId:p.id}).length} items · ${p.loggedHours||0}/${p.estimatedHours||'?'}h</div>
             ${showArchived ? `<div class="item-actions mt">
@@ -1319,10 +1318,9 @@ const AppViews = {
   renderKanban() {
     const scopedProjects = App.filterProjects(Store.getActiveProjects());
     const projectIds = new Set(scopedProjects.map((p) => p.id));
-    let tasks = Store.state.items.filter((i) =>
-      i.type === 'task' && !i.archived && (i.projectId ? projectIds.has(i.projectId) : !!i.kanbanStatus)
+    let tasks = Store.getItems({ type: 'task' }).filter((i) =>
+      i.projectId ? projectIds.has(i.projectId) : !!i.kanbanStatus
     );
-    tasks = App.filterItems(tasks);
     if (App.filters.projectId) tasks = tasks.filter((t) => t.projectId === App.filters.projectId);
     const ws = App.workspace ? Store.getWorkspaces()[App.workspace] : null;
     return `${App.renderScopeBanner()}
@@ -1331,12 +1329,12 @@ const AppViews = {
       ${App.renderKanbanProjectFilters(scopedProjects)}
       <div class="kanban-board">${Store.getKanbanColumns().map((col) => {
         const cols = Store.getKanbanColumns();
-        const colTasks = tasks.filter((t) => t.kanbanStatus === col);
-        return `<div class="kanban-col"><div class="kanban-col-header">${col} (${colTasks.length})</div>
+        const colTasks = tasks.filter((t) => Store.getKanbanColumnForItem(t, cols) === col);
+        return `<div class="kanban-col"><div class="kanban-col-header">${Utils.esc(I18n.enum(col))} (${colTasks.length})</div>
           ${colTasks.map((t) => `<div class="kanban-card" data-action="open-item" data-id="${t.id}">
             <div style="font-weight:600">${Utils.esc(t.title)}</div>
             <div class="muted">${Utils.esc(Store.getProject(t.projectId)?.name||'')}</div>
-            <div class="btn-row mt">${cols.filter((c)=>c!==col).slice(0,2).map((c)=>`<button class="btn btn-sm mini" data-kanban-move="${c}" data-id="${t.id}">→ ${c}</button>`).join('')}</div>
+            <div class="btn-row mt">${cols.filter((c)=>c!==col).slice(0,2).map((c)=>`<button class="btn btn-sm mini" data-kanban-move="${c}" data-id="${t.id}">→ ${Utils.esc(I18n.enum(c))}</button>`).join('')}</div>
           </div>`).join('')||'<p class="muted">—</p>'}</div>`;
       }).join('')}</div>`;
   },

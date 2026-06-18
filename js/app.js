@@ -116,14 +116,29 @@ const App = {
   },
 
   filterItems(items, opts = {}) {
-    if (!this.getActiveAreaIds()) return items;
-    return items.filter((i) => this.itemMatchesScope(i, opts));
+    let result = items;
+    const focusId = Store.state.settings.focusProjectId;
+    if (focusId && !opts.skipFocus) {
+      result = result.filter((i) => i.projectId === focusId);
+    }
+    const ids = this.getActiveAreaIds();
+    if (ids) {
+      result = result.filter((i) => this.itemMatchesScope(i, opts));
+    }
+    return result;
   },
 
   filterProjects(projects) {
+    let result = projects;
+    const focusId = Store.state.settings.focusProjectId;
+    if (focusId) {
+      result = result.filter((p) => p.id === focusId);
+    }
     const ids = this.getActiveAreaIds();
-    if (!ids) return projects;
-    return projects.filter((p) => ids.includes(p.areaId));
+    if (ids) {
+      result = result.filter((p) => ids.includes(p.areaId));
+    }
+    return result;
   },
 
   getFilteredItems(filter = {}, opts = {}) {
@@ -131,7 +146,7 @@ const App = {
   },
 
   getFilteredStats() {
-    const items = this.filterItems(Store.state.items.filter((i) => !i.archived));
+    const items = Store.getItems();
     const tasks = items.filter((i) => i.type === 'task');
     const weekTasks = this.filterItems(Store.getItems({ type: 'task', period: 'week' }));
     const projects = this.filterProjects(Store.getActiveProjects());
@@ -179,10 +194,19 @@ const App = {
     return null;
   },
 
+  renderFocusBanner() {
+    const focusId = Store.state.settings.focusProjectId;
+    if (!focusId) return '';
+    const p = Store.getProject(focusId);
+    if (!p) return '';
+    return `<div class="focus-banner">🎯 ${I18n.t('projects.focus')}: <strong>${Utils.esc(p.name)}</strong> · <a href="#" data-action="clear-focus">${I18n.t('focus.exit')}</a></div>`;
+  },
+
   renderScopeBanner() {
+    const focus = this.renderFocusBanner();
     const label = this.scopeFilterLabel();
-    if (!label) return '';
-    return `<div class="info-banner">Showing only: <strong>${Utils.esc(label)}</strong></div>`;
+    const scope = label ? `<div class="info-banner">${I18n.t('scope.showingOnly')}: <strong>${Utils.esc(label)}</strong></div>` : '';
+    return focus + scope;
   },
 
   /** @deprecated use filterItems */
@@ -246,9 +270,12 @@ const App = {
     } else if (pom.running) {
       extra = `<button type="button" class="workspace-timer" data-action="pomodoro-stop" title="${I18n.t('timer.pomodoroStop')}">🍅 ${Pomodoro.fmt(Pomodoro.remainingSec())}</button>`;
     }
+    const focusId = Store.state.settings.focusProjectId;
+    const focusProject = focusId ? Store.getProject(focusId) : null;
     bar.innerHTML = `
-      <button class="workspace-chip ${!this.workspace ? 'active' : ''}" data-workspace="">All</button>
-      ${Object.entries(workspaces).map(([k, w]) => `<button class="workspace-chip ${this.workspace === k ? 'active' : ''}" data-workspace="${k}">${w.icon} ${w.label}</button>`).join('')}
+      ${focusProject ? `<button type="button" class="workspace-chip focus-chip active" data-action="clear-focus" title="${I18n.t('focus.exit')}">🎯 ${Utils.esc(focusProject.name)}</button>` : ''}
+      <button class="workspace-chip ${!this.workspace ? 'active' : ''}" data-workspace="">${I18n.t('filter.all')}</button>
+      ${Object.entries(workspaces).map(([k, w]) => `<button class="workspace-chip ${this.workspace === k ? 'active' : ''}" data-workspace="${k}">${w.icon} ${I18n.enum(w.label)}</button>`).join('')}
       ${extra}`;
     bar.querySelectorAll('[data-workspace]').forEach((el) => {
       el.addEventListener('click', () => {
@@ -751,7 +778,7 @@ const App = {
 
   handleAddPick(ds) {
     const presetDate = this.currentView === 'calendar' && this.selectedCalDay ? this.selectedCalDay : null;
-    const presetProjectId = this.projectDetailId || this.filters.projectId || null;
+    const presetProjectId = this.projectDetailId || this.filters.projectId || Store.state.settings.focusProjectId || null;
     const presetClientId = this.clientDetailId || null;
     switch (ds.kind) {
       case 'quick':
@@ -1049,6 +1076,8 @@ const App = {
       if (e.target.id === 'focus-select') {
         Store.state.settings.focusProjectId = e.target.value || null;
         Store.save();
+        this.clearProjectFilterIfOutOfScope();
+        this.refresh();
       }
     });
 
@@ -1327,7 +1356,7 @@ const App = {
       case 'delete-vault': if (confirm('Delete?')) { Store.deleteVaultEntry(id); this.refresh(); } break;
       case 'filter-tag': this.filters.tag = ds.tag; this.navigate('tasks'); break;
       case 'add-cal-day': this.openItemModal(null, ds.date); break;
-      case 'export-ics': Utils.exportICS(Store.state.items.filter((i) => i.startDate)); break;
+      case 'export-ics': Utils.exportICS(Store.getItems().filter((i) => i.startDate)); break;
       case 'export-backup': Utils.exportBackup(Store.state); break;
       case 'import-backup': {
         const inp = document.createElement('input');
@@ -1377,7 +1406,7 @@ const App = {
           this.refresh();
         }
         break;
-      case 'focus-project': Store.state.settings.focusProjectId = id; Store.save(); this.refresh(); break;
+      case 'focus-project': Store.state.settings.focusProjectId = id; Store.save(); this.clearProjectFilterIfOutOfScope(); this.refresh(); break;
       case 'clear-focus': Store.state.settings.focusProjectId = null; Store.save(); this.refresh(); break;
       case 'dup-project': Store.duplicateProject(id); alert('Project duplicated!'); this.refresh(); break;
       case 'archive-project': Store.archiveProject(id); this.projectDetailId = null; this.refresh(); break;

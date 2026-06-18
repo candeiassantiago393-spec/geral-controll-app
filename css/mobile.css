@@ -90,7 +90,7 @@
 
   .kanban-board {
     display: grid;
-    grid-template-columns: repeat(5, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 12px;
     overflow-x: auto;
   }
@@ -309,7 +309,7 @@
 /* iPad landscape — more horizontal space */
 @media (min-width: 1024px) and (max-width: 1024px) and (orientation: landscape) {
   .kanban-board {
-    grid-template-columns: repeat(5, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   }
 }
 

@@ -1,14 +1,14 @@
 const AppModals = {
   typeOptions(selected) {
     return Object.entries(ITEM_TYPES).map(([k, v]) =>
-      `<option value="${k}" ${selected === k ? 'selected' : ''}>${v.icon} ${v.label}</option>`
+      `<option value="${k}" ${selected === k ? 'selected' : ''}>${v.icon} ${Utils.typeLabel(k)}</option>`
     ).join('');
   },
 
   layerOptions(selected = {}) {
     const areaId = selected.areaId || '';
-    let projectsHtml = '<option value="">— No project —</option>';
-    let subCtxHtml = '<option value="">— No context —</option>';
+    let projectsHtml = `<option value="">${I18n.t('field.noProject')}</option>`;
+    let subCtxHtml = `<option value="">${I18n.t('field.noContext')}</option>`;
     if (areaId) {
       Store.getProjectsByArea(areaId).forEach((p) => {
         projectsHtml += `<option value="${p.id}" ${selected.projectId === p.id ? 'selected' : ''}>${Utils.esc(p.name)}</option>`;
@@ -17,10 +17,10 @@ const AppModals = {
         subCtxHtml += `<option value="${c.id}" ${selected.subContextId === c.id ? 'selected' : ''}>${c.icon} ${Utils.esc(c.name)}</option>`;
       });
     }
-    return `<div class="form-group"><label>Area</label>
+    return `<div class="form-group"><label>${I18n.t('field.area')}</label>
       <select class="form-control" name="areaId" id="layer-area"><option value="">— Inbox —</option>
       ${Store.state.areas.map((a) => `<option value="${a.id}" ${areaId === a.id ? 'selected' : ''}>${a.icon} ${Utils.esc(a.name)}</option>`).join('')}</select></div>
-      <div class="form-row"><div class="form-group"><label>Project</label><select class="form-control" name="projectId" id="layer-project">${projectsHtml}</select></div>
+      <div class="form-row"><div class="form-group"><label>${I18n.t('field.project')}</label><select class="form-control" name="projectId" id="layer-project">${projectsHtml}</select></div>
         <div class="form-group"><label>${I18n.t('field.context')}</label><select class="form-control" name="subContextId" id="layer-subctx">${subCtxHtml}</select></div></div>`;
   },
 
@@ -247,8 +247,8 @@ const AppModals = {
     }
     if (type === 'task' || type === 'checklist') {
       html += `<div class="form-row">
-        <div class="form-group"><label>Work status</label><select class="form-control" name="workStatus">${Store.getWorkStatuses().map((s) => `<option ${item?.workStatus === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>Kanban</label><select class="form-control" name="kanbanStatus">${Store.getKanbanColumns().map((s) => `<option ${item?.kanbanStatus === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
+        <div class="form-group"><label>${I18n.t('field.workStatus')}</label><select class="form-control" name="workStatus">${I18n.selectOptionsText(Store.getWorkStatuses(), item?.workStatus)}</select></div>
+        <div class="form-group"><label>${I18n.t('field.kanban')}</label><select class="form-control" name="kanbanStatus">${I18n.selectOptionsText(Store.getKanbanColumns(), item?.kanbanStatus)}</select></div></div>
         <div id="stage-field-slot">${this.projectStageFieldHtml(item)}</div>
         <div class="form-group"><label>Equipment ref.</label><input class="form-control" name="equipmentRef" value="${Utils.esc(item?.equipmentRef || '')}" placeholder="Quadro 12"></div>
         <div class="form-group"><label>Part numbers / BOM</label><input class="form-control" name="partNumbers" value="${Utils.esc(item?.partNumbers || '')}"></div>
@@ -583,23 +583,23 @@ const AppModals = {
     this.openModal(`<div class="modal modal-lg"><div class="modal-header"><h2>${item ? 'Edit' : 'New'} item</h2>
       <button class="btn btn-ghost btn-icon" data-action="close-modal">✕</button></div>
       <form id="item-form"><div class="modal-body">
-        <div class="form-row"><div class="form-group"><label>Tipo</label><select class="form-control" name="type" id="item-type-select">${this.typeOptions(type)}</select></div>
-        <div class="form-group"><label>Priority</label><select class="form-control" name="priority">${Store.getPriorities().map((p) => `<option value="${p}" ${item?.priority === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div></div>
-        <div class="form-group"><label>Title</label><input class="form-control" name="title" required value="${Utils.esc(item?.title || '')}"></div>
-        <div class="form-group"><label>Content</label><textarea class="form-control" name="body" rows="5">${Utils.esc(item?.body || '')}</textarea></div>
+        <div class="form-row"><div class="form-group"><label>${I18n.t('field.type')}</label><select class="form-control" name="type" id="item-type-select">${this.typeOptions(type)}</select></div>
+        <div class="form-group"><label>${I18n.t('field.priority')}</label><select class="form-control" name="priority">${I18n.selectOptions(Store.getPriorities(), item?.priority)}</select></div></div>
+        <div class="form-group"><label>${I18n.t('field.title')}</label><input class="form-control" name="title" required value="${Utils.esc(item?.title || '')}"></div>
+        <div class="form-group"><label>${I18n.t('field.content')}</label><textarea class="form-control" name="body" rows="5">${Utils.esc(item?.body || '')}</textarea></div>
         ${this.layerOptions(item || { projectId: presetProjectId })}
         ${this.scheduleDatesFieldHtml(item, presetDate)}
-        <div class="form-row"><div class="form-group"><label>Duration (min)</label><input class="form-control" type="number" name="duration" value="${item?.duration || ''}"></div>
-        <div class="form-group"><label>Location / Link</label><input class="form-control" name="location" value="${Utils.esc(item?.location || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label>${I18n.t('field.duration')}</label><input class="form-control" type="number" name="duration" value="${item?.duration || ''}"></div>
+        <div class="form-group"><label>${I18n.t('field.location')}</label><input class="form-control" name="location" value="${Utils.esc(item?.location || '')}"></div></div>
         <div id="extra-fields">${this.extraFields(item, type)}</div>
-        <div class="form-group"><label>Tags</label><input class="form-control" name="tags" value="${Utils.esc(item?.tags?.join(', ') || '')}"></div>
-        <div class="form-group"><label>Attachment</label><input type="file" class="form-control" id="item-attachment"></div>
+        <div class="form-group"><label>${I18n.t('field.tags')}</label><input class="form-control" name="tags" value="${Utils.esc(item?.tags?.join(', ') || '')}"></div>
+        <div class="form-group"><label>${I18n.t('field.attachment')}</label><input type="file" class="form-control" id="item-attachment"></div>
         ${item?.attachments?.length ? `<div class="attachment-list">${item.attachments.map((a, i) => Utils.renderAttachmentChip(a, item.id, i)).join('')}</div>` : ''}
         ${item && ['note', 'decision'].includes(item.type) ? `<button type="button" class="btn btn-sm mt" data-action="extract-tasks" data-id="${item.id}">Extract tasks [ ]</button>` : ''}
-        <label class="checkbox-row"><input type="checkbox" name="pinned" ${item?.pinned ? 'checked' : ''}> Pin</label>
+        <label class="checkbox-row"><input type="checkbox" name="pinned" ${item?.pinned ? 'checked' : ''}> ${I18n.t('field.pin')}</label>
       </div><div class="modal-footer">
-        ${item ? `<button type="button" class="btn btn-ghost danger-left" data-action="delete-item-modal" data-id="${item.id}">Delete</button>` : ''}
-        <button type="button" class="btn" data-action="close-modal">Cancel</button>
+        ${item ? `<button type="button" class="btn btn-ghost danger-left" data-action="delete-item-modal" data-id="${item.id}">${I18n.t('action.delete')}</button>` : ''}
+        <button type="button" class="btn" data-action="close-modal">${I18n.t('action.cancel')}</button>
         <button type="submit" class="btn btn-primary">Save</button></div></form></div>`);
 
     this.wireScheduleField();
@@ -672,22 +672,22 @@ const AppModals = {
     const clients = Store.getClients();
     this.openModal(`<div class="modal"><div class="modal-header"><h2>${isEdit ? I18n.t('project.edit') : I18n.t('project.new')}</h2><button class="btn btn-ghost btn-icon" data-action="close-modal">✕</button></div>
       <form id="project-form"><div class="modal-body">
-        <div class="form-group"><label>Name</label><input class="form-control" name="name" required value="${Utils.esc(project?.name || '')}"></div>
-        <div class="form-group"><label>Area</label><select class="form-control" name="areaId" id="proj-area">${Store.state.areas.map((a) => `<option value="${a.id}" ${project ? (project.areaId === a.id ? 'selected' : '') : (a.id === 'area-freelance' ? 'selected' : '')}>${a.icon} ${Utils.esc(a.name)}</option>`).join('')}</select></div>
-        <div class="form-group"><label>Client (candeias.dev)</label>
+        <div class="form-group"><label>${I18n.t('field.name')}</label><input class="form-control" name="name" required value="${Utils.esc(project?.name || '')}"></div>
+        <div class="form-group"><label>${I18n.t('field.area')}</label><select class="form-control" name="areaId" id="proj-area">${Store.state.areas.map((a) => `<option value="${a.id}" ${project ? (project.areaId === a.id ? 'selected' : '') : (a.id === 'area-freelance' ? 'selected' : '')}>${a.icon} ${Utils.esc(a.name)}</option>`).join('')}</select></div>
+        <div class="form-group"><label>${I18n.t('field.client')}</label>
           <select class="form-control" name="clientId" id="proj-client">
-            <option value="">— Manual / no client —</option>
+            <option value="">${I18n.t('field.noClient')}</option>
             ${clients.map((c) => `<option value="${c.id}" ${(project?.clientId === c.id || presetClientId === c.id) ? 'selected' : ''}>${Utils.esc(c.name)}${c.company ? ` (${Utils.esc(c.company)})` : ''}</option>`).join('')}
           </select></div>
-        <div class="form-row"><div class="form-group"><label>Client name (if manual)</label><input class="form-control" name="client" id="proj-client-name" value="${Utils.esc(project?.client || '')}"></div>
-        <div class="form-group"><label>Email</label><input class="form-control" name="clientEmail" id="proj-client-email" value="${Utils.esc(project?.clientEmail || '')}"></div></div>
-        <div class="form-row"><div class="form-group"><label>Phone</label><input class="form-control" name="clientPhone" value="${Utils.esc(project?.clientPhone || '')}"></div>
-        <div class="form-group"><label>Stack</label><input class="form-control" name="stack" value="${Utils.esc(project?.stack || '')}"></div></div>
-        <div class="form-row"><div class="form-group"><label>Pipeline</label><select class="form-control" name="pipeline"><option value="">—</option>${Store.getPipelineStages().map((s) => `<option ${project?.pipeline === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>Payment</label><select class="form-control" name="paymentStatus"><option value="">—</option>${Store.getPaymentStatuses().map((s) => `<option ${project?.paymentStatus === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
-        <div class="form-row"><div class="form-group"><label>Estimated hours</label><input class="form-control" type="number" name="estimatedHours" value="${project?.estimatedHours ?? ''}"></div>
-        <div class="form-group"><label>URL</label><input class="form-control" name="url" value="${Utils.esc(project?.url || '')}"></div></div>
-        <div class="form-group"><label>Description</label><textarea class="form-control" name="description">${Utils.esc(project?.description || '')}</textarea></div>
+        <div class="form-row"><div class="form-group"><label>${I18n.t('field.clientManual')}</label><input class="form-control" name="client" id="proj-client-name" value="${Utils.esc(project?.client || '')}"></div>
+        <div class="form-group"><label>${I18n.t('field.email')}</label><input class="form-control" name="clientEmail" id="proj-client-email" value="${Utils.esc(project?.clientEmail || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label>${I18n.t('field.phone')}</label><input class="form-control" name="clientPhone" value="${Utils.esc(project?.clientPhone || '')}"></div>
+        <div class="form-group"><label>${I18n.t('field.stack')}</label><input class="form-control" name="stack" value="${Utils.esc(project?.stack || '')}"></div></div>
+        <div class="form-row"><div class="form-group"><label>${I18n.t('field.pipeline')}</label><select class="form-control" name="pipeline">${I18n.selectOptionsText(Store.getPipelineStages(), project?.pipeline, { emptyLabel: '—' })}</select></div>
+        <div class="form-group"><label>${I18n.t('field.payment')}</label><select class="form-control" name="paymentStatus">${I18n.selectOptionsText(Store.getPaymentStatuses(), project?.paymentStatus, { emptyLabel: '—' })}</select></div></div>
+        <div class="form-row"><div class="form-group"><label>${I18n.t('field.estimatedHours')}</label><input class="form-control" type="number" name="estimatedHours" value="${project?.estimatedHours ?? ''}"></div>
+        <div class="form-group"><label>${I18n.t('field.url')}</label><input class="form-control" name="url" value="${Utils.esc(project?.url || '')}"></div></div>
+        <div class="form-group"><label>${I18n.t('field.description')}</label><textarea class="form-control" name="description">${Utils.esc(project?.description || '')}</textarea></div>
         <div class="form-group"><label>${I18n.t('project.stages')}</label>
           <textarea class="form-control" name="stagesText" rows="4" placeholder="${Utils.esc(Store.getProjectStages().join('\n'))}">${Utils.esc(project?.stages?.join('\n') || '')}</textarea>
           <p class="muted sm">${I18n.t('project.stagesHint')}</p></div>
@@ -919,7 +919,7 @@ const AppModals = {
           .map(([l, a]) => `<div class="cmd-item" data-cmd-action="${a}"><span class="cmd-item-type">Action</span> ${l}</div>`).join('');
       } else {
         const items = Store.getItems({ search: q }).slice(0, 8);
-        const projects = Store.state.projects.filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 4);
+        const projects = Store.getActiveProjects().filter((p) => p.name.toLowerCase().includes(q.toLowerCase())).slice(0, 4);
         results.innerHTML = [...projects.map((p) => `<div class="cmd-item" data-cmd="project" data-id="${p.id}"><span class="cmd-item-type">Project</span> ${Utils.esc(p.name)}</div>`),
           ...items.map((i) => `<div class="cmd-item" data-cmd="item" data-id="${i.id}"><span class="cmd-item-type">${i.type}</span> ${Utils.esc(i.title)}</div>`)].join('') || '<div class="cmd-item muted">No results</div>';
       }

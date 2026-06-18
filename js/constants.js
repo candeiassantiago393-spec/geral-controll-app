@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'candeias_app_v3';
 const _metaVersion = document.querySelector('meta[name="app-version"]')?.content?.trim();
-const APP_VERSION = (_metaVersion && !_metaVersion.includes('__CANDEIAS')) ? _metaVersion : '3.5.5';
+const APP_VERSION = (_metaVersion && !_metaVersion.includes('__CANDEIAS')) ? _metaVersion : '3.5.8';
 
 const ITEM_TYPES = {
   note: { label: 'Note', icon: '📝' },
@@ -93,7 +93,7 @@ const PROJECT_STAGES = [
   'Planning', 'Assembly', 'Wiring', 'Commissioning', 'Testing', 'Delivery',
 ];
 
-const KANBAN_COLUMNS = ['To do', 'Today', 'In progress', 'Blocked', 'Done'];
+const KANBAN_COLUMNS = ['To do', 'Today', 'In progress', 'Waiting', 'Blocked', 'Done'];
 
 const WORK_STATUSES = ['In progress', 'Waiting', 'Blocked', 'Completed'];
 

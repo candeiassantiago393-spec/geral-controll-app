@@ -186,6 +186,10 @@ const Utils = {
   },
 
   typeLabel(type) {
+    if (typeof I18n !== 'undefined') {
+      const t = I18n.t(`type.${type}`);
+      if (t && t !== `type.${type}`) return t;
+    }
     return ITEM_TYPES[type]?.label || type;
   },
 

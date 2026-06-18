@@ -11,7 +11,7 @@ const AiAssistant = {
   findItem(query) {
     const q = this.normalizeItemQuery(query);
     if (!q) return null;
-    const items = Store.state.items.filter((i) => !i.archived);
+    const items = Store.getItems();
     return items.find((i) => i.title.toLowerCase() === q)
       || items.find((i) => i.title.toLowerCase().includes(q))
       || items.find((i) => q.includes(i.title.toLowerCase()))

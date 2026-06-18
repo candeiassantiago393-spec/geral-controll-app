@@ -1195,7 +1195,7 @@ a:hover {
 /* Kanban */
 .kanban-board {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   overflow-x: auto;
   min-height: 400px;
@@ -2102,6 +2102,9 @@ body.attachment-viewer-open {
 .tag-cloud { display: flex; flex-wrap: wrap; gap: 6px; }
 .info-banner { background: var(--green-glow); border: 1px solid var(--border-accent); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; }
 .info-banner a { color: var(--green-bright); }
+.focus-banner { background: linear-gradient(90deg, rgba(255,165,2,.12), rgba(0,210,106,.08)); border: 1px solid rgba(255,165,2,.35); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 16px; font-size: 13px; }
+.focus-banner a { color: var(--green-bright); font-weight: 600; }
+.workspace-chip.focus-chip { border-color: rgba(255,165,2,.5); background: rgba(255,165,2,.12); }
 .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .app-footer { margin-top: 32px; text-align: center; padding: 20px; border-top: 1px solid var(--border); font-size: 13px; }
 .filter-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
