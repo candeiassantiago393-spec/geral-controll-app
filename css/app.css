@@ -946,6 +946,14 @@ a:hover {
   margin-bottom: 6px;
 }
 
+.project-type-filters {
+  gap: 6px;
+}
+
+.project-type-filters .filter-chip {
+  font-size: 12px;
+}
+
 .stage-checkbox-grid {
   display: flex;
   flex-wrap: wrap;

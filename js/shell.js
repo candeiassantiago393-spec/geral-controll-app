@@ -187,8 +187,16 @@ const AppShell = {
       const p = Store.getProject(App.projectDetailId);
       parts.push({ label: I18n.t('view.projects'), current: false });
       if (p) parts.push({ label: p.name, current: false });
-      const tabLabels = { overview: 'Overview', wishlist: I18n.t('project.tab.wishlist'), tasks: 'Tasks', notes: 'Notes', events: 'Events', contacts: 'Contacts', links: 'Links', attachments: 'Attachments', hours: 'Hours', versions: 'Versions' };
-      parts.push({ label: tabLabels[App.projectTab] || App.projectTab, current: true });
+      const tabLabels = {
+        overview: I18n.t('project.tab.overview'),
+        items: I18n.t('project.tab.items'),
+        wishlist: I18n.t('project.tab.wishlist'),
+        attachments: I18n.t('project.tab.attachments'),
+        hours: I18n.t('project.tab.hours'),
+        versions: I18n.t('project.tab.versions'),
+      };
+      const tabKey = App.normalizeProjectTab(App.projectTab);
+      parts.push({ label: tabLabels[tabKey] || tabKey, current: true });
     } else if (App.currentView === 'clients' && App.clientDetailId) {
       const c = Store.getClient(App.clientDetailId);
       parts.push({ label: I18n.t('view.clients'), current: false });

@@ -319,6 +319,25 @@ const AppModals = {
     document.body.classList.add('attachment-viewer-open');
   },
 
+  openItemTypePicker(presetProjectId = null, presetDate = null) {
+    const itemBtns = Object.entries(ITEM_TYPES).map(([key, v]) =>
+      `<button type="button" class="add-menu-item" data-action="add-pick" data-kind="item" data-type="${key}">
+        <span class="add-menu-icon">${v.icon}</span><span class="add-menu-label">${v.label}</span>
+      </button>`).join('');
+    this.openModal(`<div class="modal modal-lg"><div class="modal-header"><h2>${I18n.t('project.items.new')}</h2>
+      <button class="btn btn-ghost btn-icon" data-action="close-modal">✕</button></div>
+      <div class="modal-body add-menu">
+        <p class="muted mb">${I18n.t('project.items.newHint')}</p>
+        <div class="add-menu-grid">${itemBtns}</div>
+      </div></div>`);
+    if (presetProjectId) {
+      document.getElementById('modal-overlay')?.querySelectorAll('[data-action="add-pick"]').forEach((btn) => {
+        btn.dataset.projectId = presetProjectId;
+        if (presetDate) btn.dataset.date = presetDate;
+      });
+    }
+  },
+
   openAddMenu() {
     const itemBtns = Object.entries(ITEM_TYPES).map(([key, v]) =>
       `<button type="button" class="add-menu-item" data-action="add-pick" data-kind="item" data-type="${key}">

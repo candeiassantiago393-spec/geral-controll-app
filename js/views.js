@@ -198,6 +198,12 @@ const AppViews = {
     return html;
   },
 
+  renderProjectItemRow(item) {
+    if (item.type === 'checklist') return this.renderChecklistCard(item);
+    if (item.type === 'task') return this.renderTaskRow(item);
+    return this.renderItemCard(item);
+  },
+
   renderProjectMini(p) {
     return `<div class="project-card mini" data-action="open-project" data-id="${p.id}">
       <div class="project-header"><div class="project-color" style="background:${p.color}"></div>
@@ -1190,14 +1196,15 @@ const AppViews = {
   },
 
   renderProjectDetail(projectId) {
+    App.projectTab = App.normalizeProjectTab(App.projectTab);
     const project = Store.getProject(projectId);
     if (!project) return '<p>Project not found</p>';
     const area = Store.getArea(project.areaId);
-    let items = Store.getItems({ projectId });
-    const tabs = { overview:'Overview', wishlist:'Wishlist', notes:['note','decision','idea'], tasks:['task','checklist'], events:['event','reminder'], contacts:['contact'], links:['link'], attachments:null, hours:null, versions:null };
-    if (App.projectTab !== 'overview' && App.projectTab !== 'attachments' && App.projectTab !== 'hours' && App.projectTab !== 'versions' && App.projectTab !== 'wishlist') {
-      const types = tabs[App.projectTab];
-      if (Array.isArray(types)) items = items.filter((i) => types.includes(i.type));
+    const allProjectItems = Store.getItems({ projectId });
+    let items = allProjectItems;
+    const tabs = { overview: 'Overview', items: 'Items', wishlist: 'Wishlist', attachments: null, hours: null, versions: null };
+    const itemTabs = ['items'];
+    if (itemTabs.includes(App.projectTab)) {
       items = App.filterProjectItems(items);
       items = App.sortProjectItems(items);
     }
@@ -1210,12 +1217,14 @@ const AppViews = {
     if (App.projectTab === 'overview') {
       const wishlist = project.wishlist || [];
       const wishDone = wishlist.filter((w) => w.done).length;
-      body = `<div class="stats-grid mb">${['task','note','event'].map((tp) => {
-        const c = Store.getItems({projectId,type:tp});
-        return `<div class="stat-card"><div class="stat-value">${tp==='task'?c.filter(x=>!x.completed).length:c.length}</div><div class="stat-label">${Utils.typeLabel(tp)}</div></div>`;
+      body = `<div class="stats-grid mb">${Object.keys(ITEM_TYPES).map((tp) => {
+        const c = allProjectItems.filter((i) => i.type === tp);
+        const val = (tp === 'task' || tp === 'checklist') ? c.filter((x) => !x.completed).length : c.length;
+        return `<div class="stat-card" data-action="proj-tab" data-tab="items" data-type="${tp}" style="cursor:pointer">
+          <div class="stat-value">${val}</div><div class="stat-label">${Utils.typeIcon(tp)} ${Utils.typeLabel(tp)}</div></div>`;
       }).join('')}${wishlist.length ? `<div class="stat-card" data-action="proj-tab" data-tab="wishlist" style="cursor:pointer"><div class="stat-value">${wishDone}/${wishlist.length}</div><div class="stat-label">${I18n.t('project.tab.wishlist')}</div></div>` : ''}</div>
       <div class="btn-row mb">
-        <button class="btn btn-sm btn-primary" data-action="add-proj-item" data-pid="${projectId}">+ Item</button>
+        <button class="btn btn-sm btn-primary" data-action="add-proj-item" data-pid="${projectId}">+ ${I18n.t('project.items.new')}</button>
         <button class="btn btn-sm" data-action="edit-project" data-id="${projectId}">${I18n.t('action.edit')}</button>
         <button class="btn btn-sm" data-action="focus-project" data-id="${projectId}">${I18n.t('projects.focus')}</button>
         <button class="btn btn-sm" data-action="dup-project" data-id="${projectId}">${I18n.t('projects.duplicate')}</button>
@@ -1224,11 +1233,11 @@ const AppViews = {
           : `<button class="btn btn-sm" data-action="archive-project" data-id="${projectId}">${I18n.t('action.archive')}</button>`}
         <button class="btn btn-sm btn-ghost danger-left" data-action="delete-project" data-id="${projectId}">${I18n.t('action.delete')}</button>
       </div>
-      ${Store.getItems({projectId}).slice(0,8).map((i)=>this.renderItemCard(i)).join('')}`;
+      ${allProjectItems.slice(0, 8).map((i) => this.renderProjectItemRow(i)).join('')}`;
     } else if (App.projectTab === 'wishlist') {
       body = this.renderProjectWishlist(project, projectId);
     } else if (App.projectTab === 'attachments') {
-      const atts = items.filter((i) => i.attachments?.length);
+      const atts = allProjectItems.filter((i) => i.attachments?.length);
       body = atts.length ? atts.flatMap((i) => i.attachments.map((a, attIndex) =>
         Utils.renderAttachmentChip(a, i.id, attIndex, i.title)
       )).join('') : '<div class="empty-state"><p>No attachments</p></div>';
@@ -1238,16 +1247,15 @@ const AppViews = {
     } else if (App.projectTab === 'versions') {
       body = (project.versions||[]).map((v) => `<div class="item-card mb"><strong>v${Utils.esc(v.version)}</strong> — ${Utils.fmtDate(v.date)}<p class="muted">${Utils.esc(v.notes)}</p></div>`).join('')
         + `<button class="btn btn-sm mt" data-action="add-version" data-id="${projectId}">+ Version</button>`;
-    } else {
-      const filterBar = ['notes', 'tasks', 'events', 'contacts', 'links'].includes(App.projectTab)
-        ? App.renderProjectItemFilters()
-        : '';
-      const stageBar = App.projectTab === 'tasks' ? App.renderProjectStageFilters(projectId) : '';
-      body = filterBar + stageBar + (items.length ? items.map((i) => {
-        if (i.type === 'checklist') return this.renderChecklistCard(i);
-        if (i.type === 'task') return this.renderTaskRow(i);
-        return this.renderItemCard(i);
-      }).join('') : '<div class="empty-state"><p>No items</p></div>');
+    } else if (App.projectTab === 'items') {
+      const showStages = !App.projectItemTypeFilter || ['task', 'checklist'].includes(App.projectItemTypeFilter);
+      body = `<div class="btn-row mb">
+        <button class="btn btn-sm btn-primary" data-action="add-proj-item" data-pid="${projectId}">+ ${I18n.t('project.items.new')}</button>
+      </div>
+      ${App.renderProjectTypeFilters()}
+      ${App.renderProjectItemFilters()}
+      ${showStages ? App.renderProjectStageFilters(projectId) : ''}
+      ${items.length ? items.map((i) => this.renderProjectItemRow(i)).join('') : '<div class="empty-state"><p>No items</p></div>'}`;
     }
     const stages = Store.getProjectStagesForProject(projectId);
     const stagesLine = stages.length

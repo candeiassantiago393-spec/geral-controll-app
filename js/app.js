@@ -8,6 +8,7 @@ const App = {
   projectTab: 'overview',
   projectFilter: 'active',
   projectItemFilter: 'all',
+  projectItemTypeFilter: null,
   projectStageFilter: null,
   projectStageFilterNone: '__none__',
   projectItemSort: 'date-desc',
@@ -481,10 +482,13 @@ const App = {
 
   filterProjectItems(items) {
     const f = this.projectItemFilter || 'all';
-    if (f === 'open') items = items.filter((i) => !i.completed);
-    else if (f === 'done') items = items.filter((i) => i.completed);
+    if (f === 'open') items = items.filter((i) => i.type === 'task' || i.type === 'checklist' ? !i.completed : true);
+    else if (f === 'done') items = items.filter((i) => (i.type === 'task' || i.type === 'checklist') && i.completed);
     else if (f === 'overdue') items = items.filter((i) => Utils.isOverdue(i));
     else if (f === 'urgent') items = items.filter((i) => i.priority === 'urgent' || i.priority === 'high');
+    if (this.projectItemTypeFilter) {
+      items = items.filter((i) => i.type === this.projectItemTypeFilter);
+    }
     if (this.projectStageFilter === this.projectStageFilterNone) {
       items = items.filter((i) => !Store.itemHasAnyProjectStage(i));
     } else if (this.projectStageFilter) {
@@ -514,6 +518,23 @@ const App = {
       const tb = b.updatedAt || b.createdAt || '';
       return sort === 'date-asc' ? ta.localeCompare(tb) : tb.localeCompare(ta);
     });
+  },
+
+  renderProjectTypeFilters() {
+    const types = [['', 'project.filter.all'], ...Object.keys(ITEM_TYPES).map((k) => [k, k])];
+    return `<div class="filter-row mb project-type-filters">
+      ${types.map(([type, key]) => {
+        const active = (type === '' && !this.projectItemTypeFilter) || this.projectItemTypeFilter === type;
+        const label = type === '' ? I18n.t('project.filter.all') : Utils.typeLabel(type);
+        const icon = type ? Utils.typeIcon(type) : '';
+        return `<button class="filter-chip ${active ? 'active' : ''}" data-action="proj-item-type-filter" data-type="${type}">${icon ? `${icon} ` : ''}${Utils.esc(label)}</button>`;
+      }).join('')}
+    </div>`;
+  },
+
+  normalizeProjectTab(tab) {
+    const legacy = { notes: 'items', tasks: 'items', events: 'items', contacts: 'items', links: 'items' };
+    return legacy[tab] || tab || 'overview';
   },
 
   renderProjectItemFilters() {
@@ -675,7 +696,7 @@ const App = {
         this.openAiAssistant();
         break;
       case 'item':
-        this.openItemModal(null, presetDate, presetProjectId, ds.type || null);
+        this.openItemModal(null, ds.date || presetDate, ds.projectId || presetProjectId, ds.type || null);
         break;
       case 'project':
         this.openProjectModal(presetClientId);
@@ -791,7 +812,10 @@ const App = {
 
   openProject(id) {
     if (!id || !Store.getProject(id)) return;
-    if (this.projectDetailId !== id) this.projectStageFilter = null;
+    if (this.projectDetailId !== id) {
+      this.projectStageFilter = null;
+      this.projectItemTypeFilter = null;
+    }
     this.projectDetailId = id;
     this.currentHub = 'projects';
     if (this.currentView !== 'projects') {
@@ -859,7 +883,7 @@ const App = {
 
       const tab = e.target.closest('.tab[data-tab]');
       if (tab && root.contains(tab)) {
-        this.projectTab = tab.dataset.tab;
+        this.projectTab = this.normalizeProjectTab(tab.dataset.tab);
         AppShell.renderBreadcrumb();
         this.render();
         return;
@@ -1315,12 +1339,13 @@ const App = {
           this.refresh();
         }
         break;
-      case 'add-proj-item': this.openItemModal(null, null, ds.pid); break;
+      case 'add-proj-item': AppModals.openItemTypePicker(ds.pid); break;
       case 'add-project': this.openProjectModal(); break;
       case 'log-hours': { const h = parseFloat(prompt('Hours?')); if (h) { Store.logHours(id, h); this.refresh(); } } break;
       case 'add-version': { const v = prompt('Version (e.g. 1.1)?'); const n = prompt('Notes?'); if (v) { Store.addProjectVersion(id, v, n || ''); this.refresh(); } } break;
       case 'proj-tab':
-        this.projectTab = ds.tab || 'overview';
+        this.projectTab = this.normalizeProjectTab(ds.tab);
+        if (ds.type) this.projectItemTypeFilter = ds.type;
         this.refresh();
         break;
       case 'add-wishlist-item': {
@@ -1635,6 +1660,10 @@ const App = {
         break;
       case 'save-search': { const name = prompt('Search name?'); if (name) { Store.addSavedSearch(name, { q: this.searchQuery, type: this.searchType }); alert('Saved!'); } } break;
       case 'proj-filter': this.projectFilter = ds.filter; this.render(); break;
+      case 'proj-item-type-filter':
+        this.projectItemTypeFilter = ds.type || null;
+        this.render();
+        break;
       case 'proj-item-filter': this.projectItemFilter = ds.filter; this.render(); break;
       case 'proj-stage-filter':
         this.projectStageFilter = ds.stage === '' ? null : ds.stage;
