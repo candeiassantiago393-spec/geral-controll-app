@@ -111,6 +111,44 @@ a:hover {
   font-weight: 800;
   font-size: 15px;
   color: #fff;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-settings-preview {
+  width: 72px;
+  height: 72px;
+  font-size: 28px;
+}
+
+.kanban-filters {
+  margin-bottom: 20px;
+}
+
+.kanban-filters .filter-row {
+  margin-bottom: 10px;
+}
+
+.kanban-filters .filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.kanban-proj-select {
+  max-width: 320px;
 }
 
 .brand-text h1 {

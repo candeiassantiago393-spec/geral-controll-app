@@ -1317,16 +1317,15 @@ const AppViews = {
   },
 
   renderKanban() {
-    const scopedProjects = App.filterProjects(Store.getActiveProjects());
+    const scopedProjects = App.getKanbanScopeProjects();
     const projectIds = new Set(scopedProjects.map((p) => p.id));
     let tasks = Store.state.items.filter((i) =>
       i.type === 'task' && !i.archived && (i.projectId ? projectIds.has(i.projectId) : !!i.kanbanStatus)
     );
     tasks = App.filterItems(tasks);
     if (App.filters.projectId) tasks = tasks.filter((t) => t.projectId === App.filters.projectId);
-    return `<div class="section-header"><div class="section-title">${I18n.t('view.kanban')}</div>
-      <select class="form-control w-auto" id="kanban-proj-filter"><option value="">All</option>
-      ${scopedProjects.map((p)=>`<option value="${p.id}" ${App.filters.projectId===p.id?'selected':''}>${Utils.esc(p.name)}</option>`).join('')}</select></div>
+    return `<div class="section-header"><div class="section-title">${I18n.t('view.kanban')}</div></div>
+      ${App.renderKanbanFilters()}
       <div class="kanban-board">${Store.getKanbanColumns().map((col) => {
         const cols = Store.getKanbanColumns();
         const colTasks = tasks.filter((t) => t.kanbanStatus === col);
@@ -1389,7 +1388,23 @@ const AppViews = {
   renderSettings() {
     const s = Store.state.settings;
     const lang = s.language || 'en';
+    const displayName = s.displayName || 'Candeias';
     return `<div class="section-header"><div class="section-title">${I18n.t('view.settings')}</div></div>
+      <div class="settings-box mb"><h3>${I18n.t('settings.profile.title')}</h3>
+        <p class="muted mb">${I18n.t('settings.profile.desc')}</p>
+        <div class="profile-settings">
+          <div class="brand-icon profile-avatar profile-settings-preview has-photo-${!!s.profilePhoto}" id="settings-profile-preview">${s.profilePhoto ? `<img src="${s.profilePhoto}" alt="">` : (displayName[0] || 'C').toUpperCase()}</div>
+          <div>
+            <div class="form-group"><label>${I18n.t('settings.profile.name')}</label>
+              <input class="form-control" type="text" id="profile-display-name" value="${Utils.esc(displayName)}" maxlength="40"></div>
+            <div class="form-group"><label>${I18n.t('settings.profile.photo')}</label>
+              <input type="file" class="form-control" id="profile-photo-input" accept="image/jpeg,image/png,image/webp,image/gif"></div>
+            <div class="btn-row">
+              <button type="button" class="btn btn-sm btn-primary" data-action="save-profile">${I18n.t('action.save')}</button>
+              ${s.profilePhoto ? `<button type="button" class="btn btn-sm" data-action="remove-profile-photo">${I18n.t('settings.profile.removePhoto')}</button>` : ''}
+            </div>
+          </div>
+        </div></div>
       <div class="settings-box mb"><h3>${I18n.t('settings.language')}</h3>
         <p class="muted mb">${I18n.t('settings.language.desc')}</p>
         <button class="btn btn-sm ${lang==='en'?'btn-primary':''}" data-action="set-language" data-language="en">${I18n.t('settings.language.en')}</button>
@@ -1481,7 +1496,7 @@ const AppViews = {
           <button class="btn btn-sm btn-ghost" data-action="clear-all-data">🗑 Clear all — start fresh</button>
           <button class="btn btn-sm btn-ghost" data-action="load-demo">↺ Load demo examples</button>
         </div></div>
-      <div class="settings-box about-box"><div class="brand-icon lg">C</div><h2>Candeias</h2><p class="green">candeias.dev</p>
+      <div class="settings-box about-box"><div class="brand-icon lg profile-avatar">${s.profilePhoto ? `<img src="${s.profilePhoto}" alt="">` : (displayName[0] || 'C').toUpperCase()}</div><h2>${Utils.esc(displayName)}</h2><p class="green">candeias.dev</p>
       <p class="muted">Organize. Build. Live.</p><p>Version ${APP_VERSION}</p>
       <a href="https://candeias.dev" target="_blank" class="btn btn-sm mt">Visit site</a></div>`;
   },
