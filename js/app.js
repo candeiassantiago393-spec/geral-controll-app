@@ -597,7 +597,7 @@ const App = {
         const active = (type === '' && !this.projectItemTypeFilter) || this.projectItemTypeFilter === type;
         const label = type === '' ? I18n.t('project.filter.all') : Utils.typeLabel(type);
         const icon = type ? Utils.typeIcon(type) : '';
-        return `<button class="filter-chip ${active ? 'active' : ''}" data-action="proj-item-type-filter" data-type="${type}">${icon ? `${icon} ` : ''}${Utils.esc(label)}</button>`;
+        return `<button type="button" class="filter-chip ${active ? 'active' : ''}" data-action="proj-item-type-filter" data-item-type="${type}">${icon ? `${icon} ` : ''}${Utils.esc(label)}</button>`;
       }).join('')}
     </div>`;
   },
@@ -790,9 +790,11 @@ const App = {
       case 'ai':
         this.openAiAssistant();
         break;
-      case 'item':
-        this.openItemModal(null, ds.date || presetDate, ds.projectId || presetProjectId, ds.type || null);
+      case 'item': {
+        const itemType = ds.itemType || ds.type || null;
+        this.openItemModal(null, ds.date || presetDate, ds.projectId || presetProjectId, itemType);
         break;
+      }
       case 'project':
         this.openProjectModal(presetClientId);
         break;
@@ -1781,7 +1783,7 @@ const App = {
         this.render();
         break;
       case 'proj-item-type-filter':
-        this.projectItemTypeFilter = ds.type || null;
+        this.projectItemTypeFilter = ds.itemType || ds.type || null;
         this.render();
         break;
       case 'proj-item-filter': this.projectItemFilter = ds.filter; this.render(); break;

@@ -51,13 +51,15 @@ const AppModals = {
   },
 
   projectStageFieldHtml(item = {}) {
-    const projectId = document.getElementById('layer-project')?.value || item.projectId || '';
+    const projectId = item.projectId || document.getElementById('layer-project')?.value || '';
     const stages = projectId ? Store.getProjectStagesForProject(projectId) : [];
     if (!stages.length) return '';
     const selected = new Set(Store.getItemProjectStages(item));
-    document.querySelectorAll('input[name="projectStages"]:checked')?.forEach((el) => {
-      selected.add(el.value);
-    });
+    if (document.getElementById('item-form')) {
+      document.querySelectorAll('#item-form input[name="projectStages"]:checked').forEach((el) => {
+        selected.add(el.value);
+      });
+    }
     return `<div class="form-group" id="stage-field-wrap"><label>${I18n.t('field.projectStages')}</label>
       <p class="muted sm mb">${I18n.t('field.projectStagesHint')}</p>
       <div class="stage-checkbox-grid">
@@ -229,7 +231,8 @@ const AppModals = {
     return { scheduleMode: mode, scheduleDates };
   },
 
-  extraFields(item, type) {
+  extraFields(item, type, layer = {}) {
+    const ctx = item || layer;
     let html = '';
     if (['link', 'document'].includes(type)) {
       html += `<div class="form-group"><label>URL</label><input class="form-control" name="url" value="${Utils.esc(item?.url || '')}"></div>`;
@@ -257,16 +260,16 @@ const AppModals = {
     }
     if (type === 'task' || type === 'checklist') {
       html += `<div class="form-row">
-        <div class="form-group"><label>${I18n.t('field.workStatus')}</label><select class="form-control" name="workStatus">${I18n.selectOptionsText(Store.getWorkStatuses(), item?.workStatus)}</select></div>
-        <div class="form-group"><label>${I18n.t('field.kanban')}</label><select class="form-control" name="kanbanStatus">${I18n.selectOptionsText(Store.getKanbanColumns(), item?.kanbanStatus)}</select></div></div>
-        <div id="stage-field-slot">${this.projectStageFieldHtml(item)}</div>
-        <div class="form-group"><label>Equipment ref.</label><input class="form-control" name="equipmentRef" value="${Utils.esc(item?.equipmentRef || '')}" placeholder="Quadro 12"></div>
-        <div class="form-group"><label>Part numbers / BOM</label><input class="form-control" name="partNumbers" value="${Utils.esc(item?.partNumbers || '')}"></div>
-        <div class="form-group"><label>Hours logged</label><input class="form-control" type="number" step="0.5" name="hoursLogged" value="${item?.hoursLogged || ''}"></div>`;
+        <div class="form-group"><label>${I18n.t('field.workStatus')}</label><select class="form-control" name="workStatus">${I18n.selectOptionsText(Store.getWorkStatuses(), ctx?.workStatus || 'In progress')}</select></div>
+        <div class="form-group"><label>${I18n.t('field.kanban')}</label><select class="form-control" name="kanbanStatus">${I18n.selectOptionsText(Store.getKanbanColumns(), ctx?.kanbanStatus || 'To do')}</select></div></div>
+        <div id="stage-field-slot">${this.projectStageFieldHtml(ctx)}</div>
+        <div class="form-group"><label>${I18n.t('field.equipmentRef')}</label><input class="form-control" name="equipmentRef" value="${Utils.esc(ctx?.equipmentRef || '')}" placeholder="Quadro 12"></div>
+        <div class="form-group"><label>${I18n.t('field.partNumbers')}</label><input class="form-control" name="partNumbers" value="${Utils.esc(ctx?.partNumbers || '')}"></div>
+        <div class="form-group"><label>${I18n.t('field.hoursLogged')}</label><input class="form-control" type="number" step="0.5" name="hoursLogged" value="${ctx?.hoursLogged || ''}"></div>`;
     }
     if (type === 'checklist') {
-      const lines = (item?.checklistItems || [{ text: '', done: false }]).map((c) => c.text).join('\n');
-      html += `<div class="form-group"><label>Checklist items (1 per line)</label><textarea class="form-control" name="checklistText" rows="4">${Utils.esc(lines)}</textarea></div>`;
+      const lines = (ctx?.checklistItems || [{ text: '', done: false }]).map((c) => c.text).join('\n');
+      html += `<div class="form-group"><label>${I18n.t('field.checklistItems')}</label><textarea class="form-control" name="checklistText" rows="4" placeholder="${Utils.esc(I18n.t('field.checklistPlaceholder'))}">${Utils.esc(lines)}</textarea></div>`;
     }
     return html;
   },
@@ -342,7 +345,7 @@ const AppModals = {
 
   openItemTypePicker(presetProjectId = null, presetDate = null) {
     const itemBtns = Object.entries(ITEM_TYPES).map(([key, v]) =>
-      `<button type="button" class="add-menu-item" data-action="add-pick" data-kind="item" data-type="${key}">
+      `<button type="button" class="add-menu-item" data-action="add-pick" data-kind="item" data-item-type="${key}">
         <span class="add-menu-icon">${v.icon}</span><span class="add-menu-label">${v.label}</span>
       </button>`).join('');
     this.openModal(`<div class="modal modal-lg"><div class="modal-header"><h2>${I18n.t('project.items.new')}</h2>
@@ -361,7 +364,7 @@ const AppModals = {
 
   openAddMenu() {
     const itemBtns = Object.entries(ITEM_TYPES).map(([key, v]) =>
-      `<button type="button" class="add-menu-item" data-action="add-pick" data-kind="item" data-type="${key}">
+      `<button type="button" class="add-menu-item" data-action="add-pick" data-kind="item" data-item-type="${key}">
         <span class="add-menu-icon">${v.icon}</span><span class="add-menu-label">${v.label}</span>
       </button>`).join('');
 
@@ -627,7 +630,7 @@ const AppModals = {
         ${this.scheduleDatesFieldHtml(item, presetDate)}
         <div class="form-row"><div class="form-group"><label>${I18n.t('field.duration')}</label><input class="form-control" type="number" name="duration" value="${item?.duration || ''}"></div>
         <div class="form-group"><label>${I18n.t('field.location')}</label><input class="form-control" name="location" value="${Utils.esc(item?.location || '')}"></div></div>
-        <div id="extra-fields">${this.extraFields(item, type)}</div>
+        <div id="extra-fields">${this.extraFields(item, type, layerPreset)}</div>
         <div class="form-group"><label>${I18n.t('field.tags')}</label><input class="form-control" name="tags" value="${Utils.esc(item?.tags?.join(', ') || '')}"></div>
         <div class="form-group"><label>${I18n.t('field.attachment')}</label><input type="file" class="form-control" id="item-attachment"></div>
         ${item?.attachments?.length ? `<div class="attachment-list">${item.attachments.map((a, i) => Utils.renderAttachmentChip(a, item.id, i)).join('')}</div>` : ''}
@@ -641,7 +644,9 @@ const AppModals = {
     this.wireScheduleField();
     this.wireItemModalLayers(presetProjectId, item);
     document.getElementById('item-type-select')?.addEventListener('change', (e) => {
-      document.getElementById('extra-fields').innerHTML = this.extraFields(item, e.target.value);
+      const projId = document.getElementById('layer-project')?.value || presetProjectId || '';
+      const areaId = document.getElementById('layer-area')?.value || layerPreset.areaId || '';
+      document.getElementById('extra-fields').innerHTML = this.extraFields(item, e.target.value, { projectId: projId, areaId });
       document.getElementById('layer-project')?.addEventListener('change', () => this.refreshProjectStageField(item));
     });
     document.getElementById('item-form').addEventListener('submit', async (e) => {
@@ -661,6 +666,10 @@ const AppModals = {
       data.linkCategoryId = data.linkCategoryId || null;
       this.applyFocusProjectDefaults(data);
       data.inbox = !data.areaId && !data.projectId;
+      if (data.type === 'task' || data.type === 'checklist') {
+        if (!data.workStatus) data.workStatus = 'In progress';
+        if (!data.kanbanStatus) data.kanbanStatus = 'To do';
+      }
       const schedule = this.parseScheduleFromForm(fd);
       data.scheduleMode = schedule.scheduleMode;
       data.scheduleDates = schedule.scheduleDates;
@@ -685,6 +694,10 @@ const AppModals = {
           return { text: t, done: doneByText[t.toLowerCase()] ?? false };
         });
       }
+      delete data.checklistText;
+      delete data.contactEmail;
+      delete data.contactPhone;
+      delete data.contactCompany;
       const fileInput = document.getElementById('item-attachment');
       let attachments = item?.attachments || [];
       if (fileInput?.files?.[0]) {
