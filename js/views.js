@@ -37,6 +37,9 @@ const AppViews = {
       const done = item.checklistItems.filter((c) => c.done).length;
       extra = `<div style="font-size:12px;color:var(--text-muted);margin-top:6px">${done}/${item.checklistItems.length} done</div>`;
     }
+    if (item.attachments?.length) {
+      extra += `<div class="attachment-list attachment-list--inline">${item.attachments.map((a, i) => Utils.renderAttachmentChip(a, item.id, i)).join('')}</div>`;
+    }
     return `
       <div class="item-card ${item.completed ? 'completed' : ''}" data-action="open-item" data-id="${item.id}">
         <div class="item-type">${Utils.typeIcon(item.type)} ${Utils.typeLabel(item.type)} ${pin}${overdue}</div>
@@ -1047,10 +1050,9 @@ const AppViews = {
       ${Store.getItems({projectId}).slice(0,8).map((i)=>this.renderItemCard(i)).join('')}`;
     } else if (App.projectTab === 'attachments') {
       const atts = items.filter((i) => i.attachments?.length);
-      body = atts.length ? atts.flatMap((i) => i.attachments.map((a) => {
-        const prev = Utils.previewAttachment(a);
-        return `<div class="attachment-chip">${prev?`<img src="${prev}" class="att-preview">`:''} 📎 ${Utils.esc(a.name)} (${Utils.esc(i.title)})</div>`;
-      })).join('') : '<div class="empty-state"><p>No attachments</p></div>';
+      body = atts.length ? atts.flatMap((i) => i.attachments.map((a, attIndex) =>
+        Utils.renderAttachmentChip(a, i.id, attIndex, i.title)
+      )).join('') : '<div class="empty-state"><p>No attachments</p></div>';
     } else if (App.projectTab === 'hours') {
       body = `<p class="mb">${project.loggedHours||0}h / ${project.estimatedHours||'?'}h estimated</p>
         <button class="btn btn-sm btn-primary" data-action="log-hours" data-id="${projectId}">+ Log hours</button>`;

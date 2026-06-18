@@ -128,8 +128,81 @@ const Utils = {
   },
 
   previewAttachment(att) {
+    if (!this.isImageAttachment(att)) return null;
+    return this.attachmentDataUrl(att);
+  },
+
+  attachmentDataUrl(att) {
     if (!att?.data) return null;
-    if (att.type?.startsWith('image/')) return att.data;
-    return null;
+    if (String(att.data).startsWith('data:')) return att.data;
+    const type = att.type || 'application/octet-stream';
+    return `data:${type};base64,${att.data}`;
+  },
+
+  isImageAttachment(att) {
+    const type = att?.type || '';
+    if (type.startsWith('image/')) return true;
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(att?.name || '');
+  },
+
+  isPdfAttachment(att) {
+    const type = att?.type || '';
+    if (type === 'application/pdf') return true;
+    return /\.pdf$/i.test(att?.name || '');
+  },
+
+  canPreviewInline(att) {
+    return this.isImageAttachment(att) || this.isPdfAttachment(att);
+  },
+
+  estimateAttachmentSize(att) {
+    const raw = String(att?.data || '');
+    const b64 = raw.includes(',') ? raw.split(',')[1] : raw;
+    return Math.max(0, Math.floor(b64.length * 0.75));
+  },
+
+  formatFileSize(bytes) {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  },
+
+  downloadAttachment(att) {
+    const url = this.attachmentDataUrl(att);
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = att.name || 'attachment';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  },
+
+  openAttachmentExternal(att) {
+    const url = this.attachmentDataUrl(att);
+    if (!url) return;
+    fetch(url)
+      .then((r) => r.blob())
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const opened = window.open(blobUrl, '_blank', 'noopener');
+        if (!opened) this.downloadAttachment(att);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+      })
+      .catch(() => this.downloadAttachment(att));
+  },
+
+  renderAttachmentChip(att, itemId, attIndex, meta = '') {
+    if (!att?.data) {
+      return `<span class="attachment-chip muted">📎 ${this.esc(att?.name || 'File')}</span>`;
+    }
+    const prev = this.previewAttachment(att);
+    const metaHtml = meta ? `<span class="attachment-chip-meta muted">${this.esc(meta)}</span>` : '';
+    return `<button type="button" class="attachment-chip attachment-chip--open" data-action="open-attachment" data-item-id="${itemId}" data-att-index="${attIndex}" aria-label="${this.esc(att.name)}">
+      ${prev ? `<img src="${prev}" class="att-preview" alt="">` : '<span class="attachment-icon" aria-hidden="true">📎</span>'}
+      <span class="attachment-chip-name">${this.esc(att.name)}</span>${metaHtml}
+    </button>`;
   },
 };

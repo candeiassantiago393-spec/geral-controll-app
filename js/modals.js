@@ -85,6 +85,67 @@ const AppModals = {
 
   closeModal() { document.getElementById('modal-root').innerHTML = ''; },
 
+  closeAttachmentViewer() {
+    const viewer = document.getElementById('attachment-viewer');
+    if (!viewer) return;
+    viewer.classList.remove('open');
+    viewer.innerHTML = '';
+    viewer.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('attachment-viewer-open');
+  },
+
+  openAttachmentViewer(itemId, attIndex) {
+    const item = Store.getItem(itemId);
+    const att = item?.attachments?.[attIndex];
+    if (!att?.data) {
+      alert('File not available');
+      return;
+    }
+
+    const url = Utils.attachmentDataUrl(att);
+    const isImg = Utils.isImageAttachment(att);
+    const isPdf = Utils.isPdfAttachment(att);
+    let bodyHtml = '';
+
+    if (isImg) {
+      bodyHtml = `<img src="${url}" class="attachment-viewer-img" alt="${Utils.esc(att.name)}">`;
+    } else if (isPdf) {
+      bodyHtml = `<iframe src="${url}" class="attachment-viewer-frame" title="${Utils.esc(att.name)}"></iframe>`;
+    } else {
+      const ext = (att.name?.split('.').pop() || 'FILE').toUpperCase().slice(0, 8);
+      bodyHtml = `<div class="attachment-viewer-file">
+        <div class="attachment-viewer-file-icon">${Utils.esc(ext)}</div>
+        <p class="attachment-viewer-file-name">${Utils.esc(att.name)}</p>
+        <p class="muted sm">${Utils.esc(att.type || 'Unknown type')} · ${Utils.formatFileSize(Utils.estimateAttachmentSize(att))}</p>
+        <p class="muted sm mt">Pré-visualização indisponível no browser. Usa Abrir ou Transferir.</p>
+      </div>`;
+    }
+
+    let viewer = document.getElementById('attachment-viewer');
+    if (!viewer) {
+      viewer = document.createElement('div');
+      viewer.id = 'attachment-viewer';
+      viewer.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(viewer);
+    }
+
+    viewer.innerHTML = `<div class="attachment-viewer-backdrop" data-action="close-attachment-viewer" aria-hidden="true"></div>
+      <div class="attachment-viewer-panel" role="dialog" aria-modal="true" aria-label="${Utils.esc(att.name)}">
+        <div class="attachment-viewer-header">
+          <div class="attachment-viewer-title">${Utils.esc(att.name)}</div>
+          <button type="button" class="btn btn-ghost btn-icon" data-action="close-attachment-viewer" aria-label="Fechar">✕</button>
+        </div>
+        <div class="attachment-viewer-body">${bodyHtml}</div>
+        <div class="attachment-viewer-footer">
+          <button type="button" class="btn btn-sm" data-action="download-attachment" data-item-id="${itemId}" data-att-index="${attIndex}">Transferir</button>
+          <button type="button" class="btn btn-sm btn-primary" data-action="open-attachment-external" data-item-id="${itemId}" data-att-index="${attIndex}">Abrir</button>
+        </div>
+      </div>`;
+    viewer.classList.add('open');
+    viewer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('attachment-viewer-open');
+  },
+
   openAddMenu() {
     const itemBtns = Object.entries(ITEM_TYPES).map(([key, v]) =>
       `<button type="button" class="add-menu-item" data-action="add-pick" data-kind="item" data-type="${key}">
@@ -332,10 +393,7 @@ const AppModals = {
         <div id="extra-fields">${this.extraFields(item, type)}</div>
         <div class="form-group"><label>Tags</label><input class="form-control" name="tags" value="${Utils.esc(item?.tags?.join(', ') || '')}"></div>
         <div class="form-group"><label>Attachment</label><input type="file" class="form-control" id="item-attachment"></div>
-        ${item?.attachments?.length ? `<div class="attachment-list">${item.attachments.map((a) => {
-          const prev = Utils.previewAttachment(a);
-          return prev ? `<img src="${prev}" class="att-preview">` : `<span class="attachment-chip">📎 ${Utils.esc(a.name)}</span>`;
-        }).join('')}</div>` : ''}
+        ${item?.attachments?.length ? `<div class="attachment-list">${item.attachments.map((a, i) => Utils.renderAttachmentChip(a, item.id, i)).join('')}</div>` : ''}
         ${item && ['note', 'decision'].includes(item.type) ? `<button type="button" class="btn btn-sm mt" data-action="extract-tasks" data-id="${item.id}">Extract tasks [ ]</button>` : ''}
         <label class="checkbox-row"><input type="checkbox" name="pinned" ${item?.pinned ? 'checked' : ''}> Pin</label>
       </div><div class="modal-footer">

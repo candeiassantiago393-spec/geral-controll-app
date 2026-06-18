@@ -270,7 +270,13 @@ const App = {
     document.getElementById('search-trigger').addEventListener('click', () => this.openCommandPalette());
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); this.openCommandPalette(); }
-      if (e.key === 'Escape') this.closeModal();
+      if (e.key === 'Escape') {
+        if (document.getElementById('attachment-viewer')?.classList.contains('open')) {
+          this.closeAttachmentViewer();
+          return;
+        }
+        this.closeModal();
+      }
     });
     const menuBtn = document.getElementById('btn-menu');
     const sidebar = document.getElementById('sidebar');
@@ -314,11 +320,18 @@ const App = {
         this.handleAddPick(el.dataset);
         return;
       }
-      if (['extract-tasks', 'delete-item-modal', 'delete-client-modal'].includes(action)) {
+      if (['extract-tasks', 'delete-item-modal', 'delete-client-modal', 'open-attachment'].includes(action)) {
         e.preventDefault();
         e.stopPropagation();
         this.handleAction(action, el.dataset);
       }
+    });
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-action="close-attachment-viewer"], [data-action="download-attachment"], [data-action="open-attachment-external"]');
+      if (!el) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this.handleAction(el.dataset.action, el.dataset);
     });
   },
 
@@ -1576,6 +1589,18 @@ const App = {
         await AppUpdate.applyUpdate();
         break;
       case 'close-modal': this.closeModal(); break;
+      case 'open-attachment': this.openAttachmentViewer(ds.itemId, parseInt(ds.attIndex, 10)); break;
+      case 'close-attachment-viewer': this.closeAttachmentViewer(); break;
+      case 'download-attachment': {
+        const att = Store.getItem(ds.itemId)?.attachments?.[parseInt(ds.attIndex, 10)];
+        if (att) Utils.downloadAttachment(att);
+        break;
+      }
+      case 'open-attachment-external': {
+        const att = Store.getItem(ds.itemId)?.attachments?.[parseInt(ds.attIndex, 10)];
+        if (att) Utils.openAttachmentExternal(att);
+        break;
+      }
     }
   },
 
