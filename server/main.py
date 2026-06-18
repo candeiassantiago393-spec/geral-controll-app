@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -36,6 +36,39 @@ STATIC_ROOT_FILES = {
     "render.yaml",
     "requirements.txt",
 }
+
+VERSION_PLACEHOLDER = "__CANDEIAS_V__"
+
+
+def _app_version() -> str:
+    try:
+        data = json.loads((ROOT / "version.json").read_text(encoding="utf-8"))
+        return str(data.get("version") or "0.0.0")
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return "0.0.0"
+
+
+def _inject_app_version(text: str) -> str:
+    return text.replace(VERSION_PLACEHOLDER, _app_version())
+
+
+def _cache_control_for(path: Path) -> str:
+    name = path.name.lower()
+    suffix = path.suffix.lower()
+    if name in ("index.html", "sw.js", "version.json", "manifest.json") or suffix in (".js", ".css", ".html"):
+        return "no-store, no-cache, must-revalidate"
+    if suffix in (".svg", ".png", ".ico", ".webp", ".jpg", ".jpeg", ".woff", ".woff2"):
+        return "public, max-age=604800"
+    return "no-cache"
+
+
+def _file_response(path: Path) -> FileResponse:
+    return FileResponse(path, headers={"Cache-Control": _cache_control_for(path)})
+
+
+def _html_response(path: Path) -> HTMLResponse:
+    text = _inject_app_version(path.read_text(encoding="utf-8"))
+    return HTMLResponse(text, headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
 
 
 def _now_iso() -> str:
@@ -376,7 +409,7 @@ def _safe_path(rel: str) -> Path | None:
 
 @app.get("/")
 def index():
-    return FileResponse(ROOT / "index.html")
+    return _html_response(ROOT / "index.html")
 
 
 @app.get("/{full_path:path}")
@@ -387,9 +420,13 @@ def static_or_spa(full_path: str):
     if target is None:
         raise HTTPException(404)
     if target.is_file():
-        return FileResponse(target)
+        if target.name == "index.html":
+            return _html_response(target)
+        return _file_response(target)
     if full_path in STATIC_ROOT_FILES:
         candidate = ROOT / full_path
         if candidate.is_file():
-            return FileResponse(candidate)
-    return FileResponse(ROOT / "index.html")
+            if candidate.name == "index.html":
+                return _html_response(candidate)
+            return _file_response(candidate)
+    return _html_response(ROOT / "index.html")

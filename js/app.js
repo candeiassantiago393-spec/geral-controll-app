@@ -1580,11 +1580,18 @@ const App = {
           alert(`Restore failed: ${e.message}`);
         }
         break;
-      case 'check-app-update':
-        await AppUpdate.checkVersion();
-        alert(AppUpdate.updateReady ? `Update available: v${AppUpdate.remoteVersion}` : `Up to date (v${APP_VERSION})`);
+      case 'check-app-update': {
+        const newer = await AppUpdate.checkVersion();
+        if (newer) {
+          alert(`Nova versão disponível: v${AppUpdate.remoteVersion}\n\nToca em "Atualizar para v${AppUpdate.remoteVersion}".`);
+        } else if (AppUpdate.remoteVersion && AppUpdate.remoteVersion === APP_VERSION) {
+          alert(`Já tens a versão mais recente (v${APP_VERSION}).`);
+        } else {
+          alert(`Versão local: v${APP_VERSION}${AppUpdate.remoteVersion ? `\nServidor: v${AppUpdate.remoteVersion}` : '\n(Não foi possível contactar o servidor.)'}`);
+        }
         this.render();
         break;
+      }
       case 'apply-app-update':
         await AppUpdate.applyUpdate();
         break;

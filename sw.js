@@ -1,15 +1,21 @@
-/* Service worker — bump CACHE when releasing a new version */
-const CACHE = 'candeias-v3.2.0';
+/* Service worker — keep CACHE in sync with app releases */
+const CACHE = 'candeias-v3.3.6';
+
+const NO_CACHE = (url, request) => request.destination === 'script'
+  || request.destination === 'style'
+  || url.pathname.endsWith('/sw.js')
+  || url.pathname.endsWith('/version.json')
+  || url.pathname.endsWith('/index.html');
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => Promise.all(
-      keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)),
-    )).then(() => self.clients.claim()),
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
   );
 });
 
@@ -17,22 +23,17 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
 
-  const isAppShell = request.mode === 'navigate'
-    || request.destination === 'script'
-    || request.destination === 'style'
-    || request.url.includes('version.json');
+  const url = new URL(request.url);
+  if (NO_CACHE(url, request)) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
 
-  if (!isAppShell) return;
-
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(request, clone));
-        return response;
-      })
-      .catch(() => caches.match(request)),
-  );
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).catch(() => caches.match(request)),
+    );
+  }
 });
 
 self.addEventListener('message', (event) => {

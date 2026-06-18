@@ -1202,12 +1202,15 @@ const AppViews = {
           <button class="btn btn-sm btn-primary" data-action="cloud-sync-now">↻ Sync now</button>
         </div></div>`}
       <div class="settings-box mb"><h3>App update</h3>
-        <p class="muted mb">Version <strong>${APP_VERSION}</strong> · ${typeof AppUpdate !== 'undefined' ? AppUpdate.statusLabel() : ''}</p>
+        <p class="muted mb">Versão instalada: <strong>v${APP_VERSION}</strong></p>
+        <p class="muted mb sm" id="app-update-status">${typeof AppUpdate !== 'undefined' ? AppUpdate.statusLabel() : ''}</p>
         <div class="btn-row">
-          <button class="btn btn-sm" data-action="check-app-update">Check for updates</button>
-          <button class="btn btn-sm btn-primary" data-action="apply-app-update">↻ Update app</button>
+          <button class="btn btn-sm" data-action="check-app-update">Verificar atualizações</button>
+          ${AppUpdate.updateReady
+            ? `<button class="btn btn-sm btn-primary" data-action="apply-app-update">↻ Atualizar para v${Utils.esc(AppUpdate.remoteVersion || 'nova')}</button>`
+            : `<button class="btn btn-sm" data-action="apply-app-update" title="Força recarregar a app do servidor">↻ Recarregar app</button>`}
         </div>
-        <p class="muted sm mt">Use after a new GitHub deploy — no need to reinstall the PWA.</p></div>
+        <p class="muted sm mt">Depois de um deploy no GitHub, toca em <strong>Verificar</strong> e depois <strong>Atualizar</strong>. Se não mudar, usa <strong>Recarregar app</strong>.</p></div>
       <div class="settings-box mb"><h3>Account</h3>
         <p class="muted mb">${CloudSync.isRenderMode?.() ? 'Render password login · auto-sync every 30s. Face ID unlocks on this device.' : CloudSync.isConfigured() ? 'Cloud login syncs across devices. Face ID works on this device.' : 'Local login on this device only — enable cloud sync above.'}</p>
         <button class="btn btn-sm btn-ghost danger-left" data-action="logout">Sign out</button></div>
