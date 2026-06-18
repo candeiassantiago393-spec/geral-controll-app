@@ -1111,13 +1111,16 @@ const AppViews = {
   },
 
   renderKanban() {
-    const freelanceProjects = App.filterProjects(Store.state.projects.filter((p) => p.areaId === 'area-freelance' && !p.archived));
-    let tasks = Store.state.items.filter((i) => i.type === 'task' && freelanceProjects.some((p) => p.id === i.projectId));
+    const scopedProjects = App.filterProjects(Store.getActiveProjects());
+    const projectIds = new Set(scopedProjects.map((p) => p.id));
+    let tasks = Store.state.items.filter((i) =>
+      i.type === 'task' && !i.archived && (i.projectId ? projectIds.has(i.projectId) : !!i.kanbanStatus)
+    );
     tasks = App.filterItems(tasks);
     if (App.filters.projectId) tasks = tasks.filter((t) => t.projectId === App.filters.projectId);
-    return `<div class="section-header"><div class="section-title">Kanban — candeias.dev</div>
+    return `<div class="section-header"><div class="section-title">${I18n.t('view.kanban')}</div>
       <select class="form-control w-auto" id="kanban-proj-filter"><option value="">All</option>
-      ${freelanceProjects.map((p)=>`<option value="${p.id}" ${App.filters.projectId===p.id?'selected':''}>${Utils.esc(p.name)}</option>`).join('')}</select></div>
+      ${scopedProjects.map((p)=>`<option value="${p.id}" ${App.filters.projectId===p.id?'selected':''}>${Utils.esc(p.name)}</option>`).join('')}</select></div>
       <div class="kanban-board">${Store.getKanbanColumns().map((col) => {
         const cols = Store.getKanbanColumns();
         const colTasks = tasks.filter((t) => t.kanbanStatus === col);
