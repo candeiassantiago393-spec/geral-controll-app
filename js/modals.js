@@ -141,6 +141,8 @@ const AppModals = {
     wrap.querySelectorAll('input[name="scheduleMode"]').forEach((radio) => {
       radio.addEventListener('change', () => showMode(radio.value));
     });
+    wrap.querySelector('[name="scheduleFrom"]')?.addEventListener('blur', () => this.updateSchedulePreview());
+    wrap.querySelector('[name="scheduleTo"]')?.addEventListener('blur', () => this.updateSchedulePreview());
     wrap.querySelector('[name="scheduleFrom"]')?.addEventListener('change', () => this.updateSchedulePreview());
     wrap.querySelector('[name="scheduleTo"]')?.addEventListener('change', () => this.updateSchedulePreview());
     wrap.querySelector('[name="scheduleSingle"]')?.addEventListener('change', () => this.updateSchedulePreview());
@@ -168,27 +170,35 @@ const AppModals = {
     const wrap = document.getElementById('schedule-field-wrap');
     if (!wrap) return;
     const mode = wrap.querySelector('input[name="scheduleMode"]:checked')?.value || 'single';
-    let dates = [];
+    let summaryText = '';
     if (mode === 'single') {
       const d = wrap.querySelector('[name="scheduleSingle"]')?.value;
-      if (d) dates = [d];
+      summaryText = Utils.isValidDateStr(d) ? Utils.fmtDate(d) : '';
     } else if (mode === 'range') {
       const from = wrap.querySelector('[name="scheduleFrom"]')?.value;
       const to = wrap.querySelector('[name="scheduleTo"]')?.value;
-      if (from && to) dates = Utils.expandDateRange(from, to);
-      else if (from) dates = [from];
       const prev = document.getElementById('schedule-range-preview');
-      if (prev && from && to) {
-        prev.textContent = I18n.t('schedule.rangePreview')
-          .replace('{n}', dates.length)
-          .replace('{from}', Utils.fmtDate(from))
-          .replace('{to}', Utils.fmtDate(to));
-      } else if (prev) prev.textContent = '';
+      if (Utils.isValidDateStr(from) && Utils.isValidDateStr(to)) {
+        const span = Utils.daysBetween(from, to) + 1;
+        if (span > 0 && span <= 3660) {
+          summaryText = Utils.fmtScheduleDates(Utils.expandDateRange(from, to));
+          if (prev) {
+            prev.textContent = I18n.t('schedule.rangePreview')
+              .replace('{n}', span)
+              .replace('{from}', Utils.fmtDate(from))
+              .replace('{to}', Utils.fmtDate(to));
+          }
+        } else if (prev) prev.textContent = '';
+      } else {
+        if (prev) prev.textContent = '';
+        if (Utils.isValidDateStr(from)) summaryText = Utils.fmtDate(from);
+      }
     } else {
-      dates = [...wrap.querySelectorAll('input[name="scheduleDates"]')].map((el) => el.value).sort();
+      const dates = [...wrap.querySelectorAll('input[name="scheduleDates"]')].map((el) => el.value).filter((d) => Utils.isValidDateStr(d)).sort();
+      summaryText = dates.length ? Utils.fmtScheduleDates(dates) : '';
     }
     const summary = document.getElementById('schedule-summary');
-    if (summary) summary.textContent = dates.length ? Utils.fmtScheduleDates(dates) : '';
+    if (summary) summary.textContent = summaryText;
   },
 
   parseScheduleFromForm(fd) {
@@ -196,12 +206,13 @@ const AppModals = {
     let scheduleDates = [];
     if (mode === 'single') {
       const d = fd.get('scheduleSingle');
-      if (d) scheduleDates = [d];
+      if (Utils.isValidDateStr(d)) scheduleDates = [d];
     } else if (mode === 'range') {
       const from = fd.get('scheduleFrom');
       const to = fd.get('scheduleTo');
-      if (from && to) scheduleDates = Utils.expandDateRange(from, to);
-      else if (from) scheduleDates = [from];
+      if (Utils.isValidDateStr(from) && Utils.isValidDateStr(to)) {
+        scheduleDates = Utils.expandDateRange(from, to);
+      } else if (Utils.isValidDateStr(from)) scheduleDates = [from];
     } else {
       scheduleDates = [...new Set(fd.getAll('scheduleDates').map((d) => String(d).slice(0, 10)).filter(Boolean))].sort();
     }

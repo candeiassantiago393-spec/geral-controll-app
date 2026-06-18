@@ -7,7 +7,11 @@ const Utils = {
 
   fmtDate(d) {
     if (!d) return '';
-    return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const iso = String(d).slice(0, 10);
+    if (!this.isValidDateStr(iso)) return '';
+    const [y, mo, day] = iso.split('-').map(Number);
+    const dt = new Date(y, mo - 1, day);
+    return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   },
 
   fmtMinutes(min) {
@@ -37,10 +41,58 @@ const Utils = {
     return new Date().toISOString().slice(0, 10);
   },
 
+  isValidDateStr(dateStr) {
+    const m = String(dateStr || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return false;
+    const y = +m[1];
+    const mo = +m[2];
+    const d = +m[3];
+    if (y < 1900 || y > 2100 || mo < 1 || mo > 12 || d < 1 || d > 31) return false;
+    const dt = new Date(y, mo - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
+  },
+
   addDays(dateStr, days) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
+    const m = String(dateStr || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const y = +m[1];
+    const mo = +m[2];
+    const d = +m[3];
+    const dt = new Date(y, mo - 1, d);
+    if (Number.isNaN(dt.getTime())) return null;
+    dt.setDate(dt.getDate() + days);
+    const ny = dt.getFullYear();
+    const nmo = String(dt.getMonth() + 1).padStart(2, '0');
+    const nd = String(dt.getDate()).padStart(2, '0');
+    return `${ny}-${nmo}-${nd}`;
+  },
+
+  daysBetween(from, to) {
+    if (!this.isValidDateStr(from) || !this.isValidDateStr(to)) return 0;
+    const [fy, fm, fd] = from.slice(0, 10).split('-').map(Number);
+    const [ty, tm, td] = to.slice(0, 10).split('-').map(Number);
+    const a = new Date(fy, fm - 1, fd);
+    const b = new Date(ty, tm - 1, td);
+    return Math.round((b - a) / 86400000);
+  },
+
+  expandDateRange(from, to, maxDays = 3660) {
+    if (!this.isValidDateStr(from)) return [];
+    if (!this.isValidDateStr(to)) return [from.slice(0, 10)];
+    let start = from.slice(0, 10);
+    let end = to.slice(0, 10);
+    if (end < start) [start, end] = [end, start];
+    const span = this.daysBetween(start, end) + 1;
+    if (span <= 0 || span > maxDays) return [];
+    const dates = [];
+    let cur = start;
+    for (let i = 0; i < span; i++) {
+      dates.push(cur);
+      const next = this.addDays(cur, 1);
+      if (!next || next === cur) break;
+      cur = next;
+    }
+    return dates;
   },
 
   startOfWeek(date = new Date()) {
@@ -66,20 +118,6 @@ const Utils = {
     const due = dates.length ? dates[dates.length - 1] : item.dueDate;
     if (!due) return false;
     return new Date(due) < new Date(new Date().toDateString());
-  },
-
-  expandDateRange(from, to) {
-    if (!from) return [];
-    const end = to || from;
-    if (end < from) return this.expandDateRange(end, from);
-    const dates = [];
-    let cur = from.slice(0, 10);
-    const last = end.slice(0, 10);
-    while (cur <= last) {
-      dates.push(cur);
-      cur = this.addDays(cur, 1);
-    }
-    return dates;
   },
 
   isConsecutiveRange(dates) {
