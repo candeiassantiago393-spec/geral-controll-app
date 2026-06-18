@@ -1195,6 +1195,16 @@ const AppViews = {
       }).join('') || '<div class="empty-state"><div class="icon">📁</div><h3>No projects</h3></div>'}`;
   },
 
+  renderProjectItemsPanel(projectId, items, { showTypeFilters = false, showStages = false } = {}) {
+    return `<div class="btn-row mb">
+        <button class="btn btn-sm btn-primary" data-action="add-proj-item" data-pid="${projectId}">+ ${I18n.t('project.items.new')}</button>
+      </div>
+      ${showTypeFilters ? App.renderProjectTypeFilters() : ''}
+      ${App.renderProjectItemFilters()}
+      ${showStages ? App.renderProjectStageFilters(projectId) : ''}
+      ${items.length ? items.map((i) => this.renderProjectItemRow(i)).join('') : '<div class="empty-state"><p>No items</p></div>'}`;
+  },
+
   renderProjectDetail(projectId) {
     App.projectTab = App.normalizeProjectTab(App.projectTab);
     const project = Store.getProject(projectId);
@@ -1202,9 +1212,22 @@ const AppViews = {
     const area = Store.getArea(project.areaId);
     const allProjectItems = Store.getItems({ projectId });
     let items = allProjectItems;
-    const tabs = { overview: 'Overview', items: 'Items', wishlist: 'Wishlist', attachments: null, hours: null, versions: null };
-    const itemTabs = ['items'];
-    if (itemTabs.includes(App.projectTab)) {
+    const tabs = {
+      overview: 'Overview',
+      items: 'Items',
+      notes: 'Notes',
+      tasks: 'Tasks',
+      events: 'Events',
+      contacts: 'Contacts',
+      links: 'Links',
+      wishlist: 'Wishlist',
+      attachments: null,
+      hours: null,
+      versions: null,
+    };
+    const tabTypes = App.getProjectTabTypes(App.projectTab);
+    if (App.isProjectItemListTab(App.projectTab)) {
+      if (tabTypes) items = items.filter((i) => tabTypes.includes(i.type));
       items = App.filterProjectItems(items);
       items = App.sortProjectItems(items);
     }
@@ -1220,7 +1243,8 @@ const AppViews = {
       body = `<div class="stats-grid mb">${Object.keys(ITEM_TYPES).map((tp) => {
         const c = allProjectItems.filter((i) => i.type === tp);
         const val = (tp === 'task' || tp === 'checklist') ? c.filter((x) => !x.completed).length : c.length;
-        return `<div class="stat-card" data-action="proj-tab" data-tab="items" data-type="${tp}" style="cursor:pointer">
+        const tab = App.projectTypeTab(tp);
+        return `<div class="stat-card" data-action="proj-tab" data-tab="${tab}"${tab === 'items' ? ` data-type="${tp}"` : ''} style="cursor:pointer">
           <div class="stat-value">${val}</div><div class="stat-label">${Utils.typeIcon(tp)} ${Utils.typeLabel(tp)}</div></div>`;
       }).join('')}${wishlist.length ? `<div class="stat-card" data-action="proj-tab" data-tab="wishlist" style="cursor:pointer"><div class="stat-value">${wishDone}/${wishlist.length}</div><div class="stat-label">${I18n.t('project.tab.wishlist')}</div></div>` : ''}</div>
       <div class="btn-row mb">
@@ -1249,13 +1273,11 @@ const AppViews = {
         + `<button class="btn btn-sm mt" data-action="add-version" data-id="${projectId}">+ Version</button>`;
     } else if (App.projectTab === 'items') {
       const showStages = !App.projectItemTypeFilter || ['task', 'checklist'].includes(App.projectItemTypeFilter);
-      body = `<div class="btn-row mb">
-        <button class="btn btn-sm btn-primary" data-action="add-proj-item" data-pid="${projectId}">+ ${I18n.t('project.items.new')}</button>
-      </div>
-      ${App.renderProjectTypeFilters()}
-      ${App.renderProjectItemFilters()}
-      ${showStages ? App.renderProjectStageFilters(projectId) : ''}
-      ${items.length ? items.map((i) => this.renderProjectItemRow(i)).join('') : '<div class="empty-state"><p>No items</p></div>'}`;
+      body = this.renderProjectItemsPanel(projectId, items, { showTypeFilters: true, showStages });
+    } else if (tabTypes) {
+      body = this.renderProjectItemsPanel(projectId, items, {
+        showStages: App.projectTab === 'tasks',
+      });
     }
     const stages = Store.getProjectStagesForProject(projectId);
     const stagesLine = stages.length

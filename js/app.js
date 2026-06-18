@@ -533,8 +533,33 @@ const App = {
   },
 
   normalizeProjectTab(tab) {
-    const legacy = { notes: 'items', tasks: 'items', events: 'items', contacts: 'items', links: 'items' };
-    return legacy[tab] || tab || 'overview';
+    return tab || 'overview';
+  },
+
+  getProjectTabTypes(tab) {
+    const map = {
+      notes: ['note', 'decision', 'idea', 'document'],
+      tasks: ['task', 'checklist'],
+      events: ['event', 'reminder'],
+      contacts: ['contact'],
+      links: ['link'],
+    };
+    return map[tab] || null;
+  },
+
+  isProjectItemListTab(tab) {
+    return tab === 'items' || !!this.getProjectTabTypes(tab);
+  },
+
+  projectTypeTab(type) {
+    const map = {
+      note: 'notes', decision: 'notes', idea: 'notes', document: 'notes',
+      task: 'tasks', checklist: 'tasks',
+      event: 'events', reminder: 'events',
+      contact: 'contacts',
+      link: 'links',
+    };
+    return map[type] || 'items';
   },
 
   renderProjectItemFilters() {
@@ -883,7 +908,8 @@ const App = {
 
       const tab = e.target.closest('.tab[data-tab]');
       if (tab && root.contains(tab)) {
-        this.projectTab = this.normalizeProjectTab(tab.dataset.tab);
+        this.projectTab = tab.dataset.tab || 'overview';
+        if (this.projectTab !== 'items') this.projectItemTypeFilter = null;
         AppShell.renderBreadcrumb();
         this.render();
         return;
@@ -1344,8 +1370,9 @@ const App = {
       case 'log-hours': { const h = parseFloat(prompt('Hours?')); if (h) { Store.logHours(id, h); this.refresh(); } } break;
       case 'add-version': { const v = prompt('Version (e.g. 1.1)?'); const n = prompt('Notes?'); if (v) { Store.addProjectVersion(id, v, n || ''); this.refresh(); } } break;
       case 'proj-tab':
-        this.projectTab = this.normalizeProjectTab(ds.tab);
-        if (ds.type) this.projectItemTypeFilter = ds.type;
+        this.projectTab = ds.tab || 'overview';
+        if (ds.tab === 'items' && ds.type) this.projectItemTypeFilter = ds.type;
+        else if (ds.tab !== 'items') this.projectItemTypeFilter = null;
         this.refresh();
         break;
       case 'add-wishlist-item': {

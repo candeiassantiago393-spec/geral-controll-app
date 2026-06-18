@@ -190,12 +190,17 @@ const AppShell = {
       const tabLabels = {
         overview: I18n.t('project.tab.overview'),
         items: I18n.t('project.tab.items'),
+        notes: I18n.t('project.tab.notes'),
+        tasks: I18n.t('project.tab.tasks'),
+        events: I18n.t('project.tab.events'),
+        contacts: I18n.t('project.tab.contacts'),
+        links: I18n.t('project.tab.links'),
         wishlist: I18n.t('project.tab.wishlist'),
         attachments: I18n.t('project.tab.attachments'),
         hours: I18n.t('project.tab.hours'),
         versions: I18n.t('project.tab.versions'),
       };
-      const tabKey = App.normalizeProjectTab(App.projectTab);
+      const tabKey = App.projectTab;
       parts.push({ label: tabLabels[tabKey] || tabKey, current: true });
     } else if (App.currentView === 'clients' && App.clientDetailId) {
       const c = Store.getClient(App.clientDetailId);
