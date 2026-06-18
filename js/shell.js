@@ -141,9 +141,63 @@ const AppShell = {
   render() {
     const hubId = App.currentHub || this.viewToHub(App.currentView);
     App.currentHub = hubId;
+    this.renderSidebarHubs(hubId);
+    this.renderBreadcrumb();
     this.renderTabs(hubId);
     this.renderBottomNav(hubId);
     this.updateHeaderBadges();
+  },
+
+  renderSidebarHubs(activeHub) {
+    const el = document.getElementById('sidebar-hubs');
+    if (!el) return;
+    if (!this._hubsBound) {
+      this._hubsBound = true;
+      el.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-hub]');
+        if (!btn) return;
+        const hubId = btn.dataset.hub;
+        App.currentHub = hubId;
+        const hub = this.hubs[hubId];
+        const view = hub.tabs.some((t) => t.view === App.currentView) ? App.currentView : hub.defaultView;
+        App.navigate(view, { source: 'hub' });
+      });
+    }
+    el.innerHTML = Object.entries(this.hubs).map(([id, hub]) => `
+      <button type="button" class="sidebar-hub-btn ${activeHub === id ? 'active' : ''}" data-hub="${id}">
+        <span class="nav-icon">${hub.icon}</span>
+        <span>${Utils.esc(I18n.t(hub.i18n))}</span>
+      </button>
+    `).join('');
+  },
+
+  renderBreadcrumb() {
+    const el = document.getElementById('app-breadcrumb');
+    if (!el) return;
+    const hubId = App.currentHub || this.viewToHub(App.currentView);
+    const hub = this.hubs[hubId];
+    const parts = [{ label: I18n.t(hub.i18n), current: false }];
+
+    if (App.currentView === 'projects' && App.projectDetailId) {
+      const p = Store.getProject(App.projectDetailId);
+      parts.push({ label: I18n.t('view.projects'), current: false });
+      if (p) parts.push({ label: p.name, current: false });
+      const tabLabels = { overview: 'Overview', tasks: 'Tasks', notes: 'Notes', events: 'Events', contacts: 'Contacts', links: 'Links', attachments: 'Attachments', hours: 'Hours', versions: 'Versions' };
+      parts.push({ label: tabLabels[App.projectTab] || App.projectTab, current: true });
+    } else if (App.currentView === 'clients' && App.clientDetailId) {
+      const c = Store.getClient(App.clientDetailId);
+      parts.push({ label: I18n.t('view.clients'), current: false });
+      parts.push({ label: c?.name || '—', current: true });
+    } else {
+      const tab = hub.tabs.find((t) => t.view === App.currentView);
+      if (tab) parts.push({ label: I18n.t(tab.i18n), current: true });
+      else parts[0].current = true;
+    }
+
+    el.innerHTML = parts.map((p, i) => {
+      const sep = i > 0 ? '<span class="sep" aria-hidden="true">›</span>' : '';
+      return `${sep}<span class="${p.current ? 'current' : 'muted'}">${Utils.esc(p.label)}</span>`;
+    }).join('');
   },
 
   renderTabs(hubId) {

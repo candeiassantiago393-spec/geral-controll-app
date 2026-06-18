@@ -796,6 +796,7 @@ const App = {
     const content = document.getElementById('content');
     if (content) content.classList.add('content-loading');
     requestAnimationFrame(() => {
+      AppShell.renderBreadcrumb();
       this.render();
       AppShell.render();
       content?.classList.remove('content-loading');
@@ -854,6 +855,7 @@ const App = {
       const tab = e.target.closest('.tab[data-tab]');
       if (tab && root.contains(tab)) {
         this.projectTab = tab.dataset.tab;
+        AppShell.renderBreadcrumb();
         this.render();
         return;
       }
@@ -861,6 +863,7 @@ const App = {
       const clientTab = e.target.closest('[data-client-tab]');
       if (clientTab && root.contains(clientTab)) {
         this.clientTab = clientTab.dataset.clientTab;
+        AppShell.renderBreadcrumb();
         this.render();
         return;
       }

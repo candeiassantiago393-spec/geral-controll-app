@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Candeias — UI Prototype (Preview)</title>
+  <style>
+    :root {
+      --bg-deep: #0c0d10;
+      --bg-primary: #12141a;
+      --bg-secondary: #181b22;
+      --bg-elevated: #1e222b;
+      --bg-hover: #252a34;
+      --border: #2a3040;
+      --border-subtle: #1f2430;
+      --accent: #3d8bfd;
+      --accent-dim: #2a6fd4;
+      --accent-muted: rgba(61, 139, 253, 0.12);
+      --text: #e8eaef;
+      --text-secondary: #9aa3b5;
+      --text-muted: #6b7385;
+      --danger: #e85d6a;
+      --warning: #d4a017;
+      --success: #3dba7a;
+      --sidebar-w: 220px;
+      --header-h: 52px;
+      --tabs-h: 40px;
+      --radius: 6px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Cascadia Code", Consolas, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg-deep);
+      line-height: 1.45;
+    }
+
+    button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    a { color: var(--accent); text-decoration: none; }
+
+    .proto-banner {
+      background: var(--accent-muted);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .proto-banner strong { color: var(--accent); }
+
+    .app {
+      display: flex;
+      height: calc(100vh - 33px);
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--bg-primary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .brand-name { font-weight: 700; font-size: 15px; letter-spacing: -0.02em; }
+    .brand-sub { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .nav-section {
+      padding: 12px 10px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 14px;
+      margin: 1px 8px;
+      width: calc(100% - 16px);
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      text-align: left;
+      transition: background 0.12s, color 0.12s;
+    }
+
+    .nav-item:hover { background: var(--bg-hover); color: var(--text); }
+    .nav-item.active { background: var(--accent-muted); color: var(--accent); font-weight: 600; }
+
+    .nav-icon {
+      width: 18px;
+      text-align: center;
+      font-size: 12px;
+      opacity: 0.85;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Main */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--bg-deep);
+    }
+
+    .topbar {
+      height: var(--header-h);
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .breadcrumb {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .breadcrumb span { color: var(--text-secondary); }
+    .breadcrumb .current { color: var(--text); font-weight: 600; }
+
+    .topbar-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-fake {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      width: 180px;
+    }
+
+    .btn {
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+    }
+
+    .btn:hover { background: var(--bg-hover); color: var(--text); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-dim); }
+
+    .tabs {
+      height: var(--tabs-h);
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: stretch;
+      padding: 0 12px;
+      gap: 2px;
+      overflow-x: auto;
+      flex-shrink: 0;
+    }
+
+    .tabs::-webkit-scrollbar { height: 0; }
+
+    .tab {
+      padding: 0 14px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab:hover { color: var(--text-secondary); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+    .tab-badge {
+      background: var(--danger);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 10px;
+      min-width: 16px;
+      text-align: center;
+    }
+
+    .content {
+      flex: 1;
+      overflow: auto;
+      padding: 20px 24px 32px;
+    }
+
+    .page-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .page-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+
+    /* Components */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+
+    .stat-value { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; }
+    .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .filter-chip {
+      padding: 5px 12px;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+    }
+
+    .filter-chip:hover { border-color: var(--text-muted); }
+    .filter-chip.active { background: var(--accent-muted); border-color: var(--accent); color: var(--accent); }
+
+    .filter-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+    }
+
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--bg-hover); cursor: pointer; }
+    .data-table .title-cell { color: var(--text); font-weight: 500; }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor: pointer;
+      transition: border-color 0.12s;
+    }
+
+    .card:hover { border-color: var(--accent); }
+    .card-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .card-meta { font-size: 12px; color: var(--text-muted); }
+
+    .color-bar { width: 4px; height: 36px; border-radius: 2px; background: var(--accent); flex-shrink: 0; }
+
+    .project-header {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .project-color { width: 6px; align-self: stretch; border-radius: 3px; background: var(--accent); min-height: 64px; }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .pill-accent { background: var(--accent-muted); border-color: transparent; color: var(--accent); }
+    .pill-warn { color: var(--warning); border-color: rgba(212, 160, 23, 0.3); }
+    .pill-danger { color: var(--danger); border-color: rgba(232, 93, 106, 0.3); }
+
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-primary);
+    }
+
+    .task-row:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+    .task-check {
+      width: 18px;
+      height: 18px;
+      border: 1.5px solid var(--border);
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .task-list { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+
+    .kanban {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(180px, 1fr));
+      gap: 12px;
+      overflow-x: auto;
+    }
+
+    .kanban-col {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-height: 200px;
+    }
+
+    .kanban-col-h {
+      padding: 10px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kanban-card {
+      margin: 8px;
+      padding: 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      font-size: 12px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+      background: var(--bg-primary);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+
+    .back-link {
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 16px;
+      display: inline-block;
+      font-weight: 600;
+    }
+
+    .stages-line {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .stages-line strong { color: var(--text-secondary); font-weight: 600; }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .search-fake { display: none; }
+      .kanban { grid-template-columns: repeat(3, minmax(160px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="proto-banner">
+    <strong>Protótipo UI</strong> — Command Center + Object Page · Apenas navegação visual · Não altera a app principal
+  </div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar"></aside>
+
+    <div class="main">
+      <header class="topbar">
+        <nav class="breadcrumb" id="breadcrumb"></nav>
+        <div class="topbar-actions">
+          <div class="search-fake">Pesquisar…</div>
+          <button type="button" class="btn">Sync</button>
+        </div>
+      </header>
+
+      <nav class="tabs" id="tabs" role="tablist"></nav>
+
+      <main class="content" id="content"></main>
+    </div>
+  </div>
+
+  <script>
+    const HUBS = {
+      home: {
+        label: 'Início',
+        icon: '⌂',
+        defaultView: 'dashboard',
+        tabs: [
+          { id: 'dashboard', label: 'Visão geral' },
+          { id: 'today', label: 'Hoje' },
+          { id: 'inbox', label: 'Inbox', badge: 3 },
+          { id: 'calendar', label: 'Calendário' },
+          { id: 'timeline', label: 'Linha temporal' },
+          { id: 'review', label: 'Revisão' },
+          { id: 'stats', label: 'Estatísticas' },
+        ],
+      },
+      work: {
+        label: 'Tarefas',
+        icon: '✓',
+        defaultView: 'tasks',
+        tabs: [
+          { id: 'tasks', label: 'Tarefas' },
+          { id: 'overdue', label: 'Atrasadas', badge: 2 },
+          { id: 'pinned', label: 'Fixadas' },
+          { id: 'blocked', label: 'Bloqueadas' },
+        ],
+      },
+      projects: {
+        label: 'Projetos',
+        icon: '▣',
+        defaultView: 'projects',
+        tabs: [
+          { id: 'projects', label: 'Projetos' },
+          { id: 'kanban', label: 'Kanban' },
+          { id: 'clients', label: 'Clientes' },
+        ],
+      },
+      library: {
+        label: 'Mais',
+        icon: '☰',
+        defaultView: 'vault',
+        tabs: [
+          { id: 'vault', label: 'Vault' },
+          { id: 'contacts', label: 'Contactos' },
+          { id: 'emails', label: 'Emails' },
+          { id: 'links', label: 'Links' },
+          { id: 'subscriptions', label: 'Subscrições' },
+          { id: 'templates', label: 'Modelos' },
+          { id: 'tools', label: 'Ferramentas' },
+          { id: 'archive', label: 'Arquivo' },
+          { id: 'areas', label: 'Áreas' },
+          { id: 'personalization', label: 'Personalização' },
+          { id: 'accessibility', label: 'Acessibilidade' },
+          { id: 'settings', label: 'Definições' },
+        ],
+      },
+    };
+
+    const PROJECT_TABS = [
+      { id: 'overview', label: 'Overview' },
+      { id: 'tasks', label: 'Tasks' },
+      { id: 'notes', label: 'Notes' },
+      { id: 'events', label: 'Events' },
+      { id: 'contacts', label: 'Contacts' },
+      { id: 'links', label: 'Links' },
+      { id: 'attachments', label: 'Attachments' },
+      { id: 'hours', label: 'Hours' },
+      { id: 'versions', label: 'Versions' },
+    ];
+
+    const PROJECTS = [
+      { id: 'elev-3', name: 'Elevador 3', client: 'Cliente ABC', area: 'Work', color: '#3d8bfd', items: 24, hours: '32/80', stages: ['Projeto', 'Sensores', 'Displays', 'Comissionamento', 'Testes'] },
+      { id: 'siemens-1', name: 'Painel X — Siemens', client: 'Siemens', area: 'Work', color: '#3dba7a', items: 18, hours: '12/40', stages: null },
+      { id: 'web-client', name: 'Site candeias.dev', client: 'Freelance', area: 'Projects', color: '#d4a017', items: 9, hours: '8/20', stages: null },
+    ];
+
+    const TASKS = [
+      { title: 'Validar sensor pavimento', project: 'elev-3', stage: 'Sensores', due: '20 Jun', pri: 'urgent' },
+      { title: 'Diagrama display cabina', project: 'elev-3', stage: 'Displays', due: '22 Jun', pri: 'high' },
+      { title: 'BOM quadro comando', project: 'elev-3', stage: 'Projeto', due: '25 Jun', pri: 'normal' },
+      { title: 'Teste final EN81', project: 'elev-3', stage: 'Testes', due: '28 Jun', pri: 'high' },
+      { title: 'Enviar diagrama atualizado', project: 'siemens-1', stage: '', due: '19 Jun', pri: 'urgent' },
+    ];
+
+    const state = {
+      hub: 'home',
+      view: 'dashboard',
+      projectId: null,
+      projectTab: 'overview',
+      stageFilter: 'all',
+    };
+
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function getProject(id) {
+      return PROJECTS.find((p) => p.id === id);
+    }
+
+    function setHub(hubId) {
+      state.hub = hubId;
+      state.projectId = null;
+      state.view = HUBS[hubId].defaultView;
+      state.projectTab = 'overview';
+      state.stageFilter = 'all';
+      render();
+    }
+
+    function setView(viewId) {
+      state.view = viewId;
+      state.projectId = null;
+      state.projectTab = 'overview';
+      render();
+    }
+
+    function openProject(id) {
+      state.hub = 'projects';
+      state.view = 'projects';
+      state.projectId = id;
+      state.projectTab = 'overview';
+      state.stageFilter = 'all';
+      render();
+    }
+
+    function setProjectTab(tabId) {
+      state.projectTab = tabId;
+      render();
+    }
+
+    function setStageFilter(stage) {
+      state.stageFilter = stage;
+      render();
+    }
+
+    function backToProjects() {
+      state.projectId = null;
+      state.projectTab = 'overview';
+      render();
+    }
+
+    function renderSidebar() {
+      const el = document.getElementById('sidebar');
+      el.innerHTML = `
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <div class="brand-name">Candeias</div>
+            <div class="brand-sub">Control · Preview</div>
+          </div>
+        </div>
+        <div class="nav-section">Navegação</div>
+        ${Object.entries(HUBS).map(([id, hub]) => `
+          <button type="button" class="nav-item ${state.hub === id && !state.projectId ? 'active' : ''}" data-hub="${id}">
+            <span class="nav-icon">${hub.icon}</span>
+            ${esc(hub.label)}
+          </button>
+        `).join('')}
+        <div class="sidebar-footer">Layout: Command Center<br>v3.3.10 · Protótipo</div>
+      `;
+      el.querySelectorAll('[data-hub]').forEach((btn) => {
+        btn.addEventListener('click', () => setHub(btn.dataset.hub));
+      });
+    }
+
+    function renderBreadcrumb() {
+      const el = document.getElementById('breadcrumb');
+      const hub = HUBS[state.hub];
+      const parts = [hub.label];
+
+      if (state.projectId) {
+        const p = getProject(state.projectId);
+        parts.push('Projetos', p?.name || '', PROJECT_TABS.find((t) => t.id === state.projectTab)?.label || '');
+      } else {
+        const tab = hub.tabs.find((t) => t.id === state.view);
+        if (tab) parts.push(tab.label);
+      }
+
+      el.innerHTML = parts.map((p, i) => {
+        if (!p) return '';
+        const isLast = i === parts.length - 1;
+        const sep = i > 0 ? '<span>›</span>' : '';
+        return `${sep}<span class="${isLast ? 'current' : ''}">${esc(p)}</span>`;
+      }).join('');
+    }
+
+    function renderTabs() {
+      const el = document.getElementById('tabs');
+
+      if (state.projectId) {
+        el.innerHTML = PROJECT_TABS.map((t) => `
+          <button type="button" class="tab ${state.projectTab === t.id ? 'active' : ''}" data-ptab="${t.id}" role="tab">
+            ${esc(t.label)}
+          </button>
+        `).join('');
+        el.querySelectorAll('[data-ptab]').forEach((btn) => {
+          btn.addEventListener('click', () => setProjectTab(btn.dataset.ptab));
+        });
+        return;
+      }
+
+      const hub = HUBS[state.hub];
+      el.innerHTML = hub.tabs.map((t) => `
+        <button type="button" class="tab ${state.view === t.id ? 'active' : ''}" data-view="${t.id}" role="tab">
+          ${esc(t.label)}
+          ${t.badge ? `<span class="tab-badge">${t.badge}</span>` : ''}
+        </button>
+      `).join('');
+      el.querySelectorAll('[data-view]').forEach((btn) => {
+        btn.addEventListener('click', () => setView(btn.dataset.view));
+      });
+    }
+
+    function renderTaskTable(tasks, showProject = false) {
+      if (!tasks.length) return '<div class="empty">Nenhuma tarefa nesta vista</div>';
+      return `
+        <table class="data-table">
+          <thead><tr>
+            <th>Título</th>
+            ${showProject ? '<th>Projeto</th>' : ''}
+            <th>Etapa</th>
+            <th>Prioridade</th>
+            <th>Data limite</th>
+          </tr></thead>
+          <tbody>
+            ${tasks.map((t) => `
+              <tr>
+                <td class="title-cell">${esc(t.title)}</td>
+                ${showProject ? `<td>${esc(getProject(t.project)?.name || '—')}</td>` : ''}
+                <td>${t.stage ? `<span class="pill pill-accent">${esc(t.stage)}</span>` : '—'}</td>
+                <td><span class="pill ${t.pri === 'urgent' ? 'pill-danger' : t.pri === 'high' ? 'pill-warn' : ''}">${esc(t.pri)}</span></td>
+                <td>${esc(t.due)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderDashboard() {
+      return `
+        <h1 class="page-title">Visão geral</h1>
+        <p class="page-sub">Quinta-feira, 18 Jun 2026 · Work</p>
+        <div class="stats-row">
+          <div class="stat"><div class="stat-value">12</div><div class="stat-label">Tarefas abertas</div></div>
+          <div class="stat"><div class="stat-value">2</div><div class="stat-label">Atrasadas</div></div>
+          <div class="stat"><div class="stat-value">32h</div><div class="stat-label">Horas registadas</div></div>
+          <div class="stat"><div class="stat-value">3</div><div class="stat-label">Projetos ativos</div></div>
+        </div>
+        <h2 style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">Tarefas urgentes</h2>
+        ${renderTaskTable(TASKS.filter((t) => t.pri === 'urgent'), true)}
+      `;
+    }
+
+    function renderGenericList(title, subtitle, rows) {
+      return `
+        <h1 class="page-title">${esc(title)}</h1>
+        <p class="page-sub">${esc(subtitle)}</p>
+        <table class="data-table">
+          <thead><tr><th>Nome</th><th>Detalhe</th><th>Estado</th></tr></thead>
+          <tbody>${rows.map((r) => `
+            <tr><td class="title-cell">${esc(r[0])}</td><td>${esc(r[1])}</td><td><span class="pill">${esc(r[2])}</span></td></tr>
+          `).join('')}</tbody>
+        </table>
+      `;
+    }
+
+    function renderProjectsList() {
+      return `
+        <h1 class="page-title">Projetos</h1>
+        <p class="page-sub">3 projetos ativos</p>
+        <div class="card-grid">
+          ${PROJECTS.map((p) => `
+            <article class="card" data-project="${p.id}">
+              <div style="display:flex;gap:10px;align-items:flex-start;">
+                <div class="color-bar" style="background:${p.color}"></div>
+                <div>
+                  <div class="card-title">${esc(p.name)}</div>
+                  <div class="card-meta">${esc(p.area)} · ${esc(p.client)}</div>
+                  <div class="card-meta" style="margin-top:8px;">${p.items} itens · ${p.hours}h</div>
+                </div>
+              </div>
+            </article>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderProjectDetail() {
+      const p = getProject(state.projectId);
+      if (!p) return '<div class="empty">Projeto não encontrado</div>';
+
+      const stages = p.stages || ['Planning', 'Assembly', 'Wiring', 'Testing', 'Delivery'];
+      let body = '';
+
+      if (state.projectTab === 'overview') {
+        body = `
+          <div class="stats-row">
+            <div class="stat"><div class="stat-value">8</div><div class="stat-label">Tasks abertas</div></div>
+            <div class="stat"><div class="stat-value">4</div><div class="stat-label">Notas</div></div>
+            <div class="stat"><div class="stat-value">2</div><div class="stat-label">Eventos</div></div>
+          </div>
+          <p class="stages-line"><strong>Etapas:</strong> ${stages.map(esc).join(' → ')}</p>
+          ${renderTaskTable(TASKS.filter((t) => t.project === p.id).slice(0, 3))}
+        `;
+      } else if (state.projectTab === 'tasks') {
+        let tasks = TASKS.filter((t) => t.project === p.id);
+        if (state.stageFilter !== 'all') tasks = tasks.filter((t) => t.stage === state.stageFilter);
+        body = `
+          <div class="filter-row">
+            <span style="font-size:12px;color:var(--text-muted);">Etapa:</span>
+            <button type="button" class="filter-chip ${state.stageFilter === 'all' ? 'active' : ''}" data-stage="all">Todas</button>
+            ${stages.map((s) => `
+              <button type="button" class="filter-chip ${state.stageFilter === s ? 'active' : ''}" data-stage="${esc(s)}">${esc(s)}</button>
+            `).join('')}
+            <span class="filter-sep"></span>
+            <button type="button" class="filter-chip active">Abertas</button>
+            <button type="button" class="filter-chip">Concluídas</button>
+          </div>
+          ${renderTaskTable(tasks)}
+        `;
+      } else if (state.projectTab === 'hours') {
+        body = `<div class="stat" style="max-width:200px;margin-bottom:16px;"><div class="stat-value">32h</div><div class="stat-label">de 80h estimadas</div></div>
+          <table class="data-table"><thead><tr><th>Task</th><th>Horas</th></tr></thead>
+          <tbody><tr><td class="title-cell">Validar sensor pavimento</td><td>4h</td></tr>
+          <tr><td class="title-cell">Diagrama display cabina</td><td>6h</td></tr></tbody></table>`;
+      } else {
+        body = `<div class="empty">Vista <strong>${esc(state.projectTab)}</strong> — conteúdo de exemplo neste protótipo</div>`;
+      }
+
+      return `
+        <button type="button" class="back-link" id="back-projects">← Voltar aos projetos</button>
+        <div class="project-header">
+          <div class="project-color" style="background:${p.color}"></div>
+          <div>
+            <h1 class="page-title" style="margin-bottom:6px;">${esc(p.name)}</h1>
+            <p class="page-sub" style="margin:0;">${esc(p.area)} · ${esc(p.client)} · ${p.items} itens</p>
+          </div>
+        </div>
+        ${body}
+      `;
+    }
+
+    function renderKanban() {
+      const cols = ['To do', 'Today', 'In progress', 'Blocked', 'Done'];
+      return `
+        <h1 class="page-title">Kanban</h1>
+        <p class="page-sub">Tarefas por coluna de trabalho</p>
+        <div class="kanban">
+          ${cols.map((col, i) => `
+            <div class="kanban-col">
+              <div class="kanban-col-h">${esc(col)}</div>
+              ${i < 3 ? TASKS.slice(i, i + 1).map((t) => `
+                <div class="kanban-card"><strong>${esc(t.title)}</strong><br><span style="color:var(--text-muted);font-size:11px;">${esc(getProject(t.project)?.name || '')}</span></div>
+              `).join('') : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderPersonalization() {
+      return `
+        <h1 class="page-title">Personalização</h1>
+        <p class="page-sub">Listas configuráveis da app</p>
+        <h2 style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:16px 0 8px;">Etapas do projeto</h2>
+        <table class="data-table"><tbody>
+          ${['Planning', 'Assembly', 'Wiring', 'Commissioning', 'Testing', 'Delivery'].map((s, i) => `
+            <tr><td style="color:var(--text-muted);width:32px;">${i + 1}</td><td class="title-cell">${s}</td></tr>
+          `).join('')}
+        </tbody></table>
+      `;
+    }
+
+    function renderSettings() {
+      return `
+        <h1 class="page-title">Definições</h1>
+        <p class="page-sub">Versão instalada: <strong style="color:var(--text);">v3.3.10</strong></p>
+        <div class="stat" style="max-width:320px;">
+          <div class="stat-label">Estado da app</div>
+          <div class="stat-value" style="font-size:16px;margin-top:8px;color:var(--success);">Atualizada</div>
+        </div>
+      `;
+    }
+
+    function renderContent() {
+      const el = document.getElementById('content');
+
+      if (state.projectId) {
+        el.innerHTML = renderProjectDetail();
+        document.getElementById('back-projects')?.addEventListener('click', backToProjects);
+        el.querySelectorAll('[data-stage]').forEach((btn) => {
+          btn.addEventListener('click', () => setStageFilter(btn.dataset.stage));
+        });
+        return;
+      }
+
+      const v = state.view;
+      let html = '';
+
+      if (v === 'dashboard') html = renderDashboard();
+      else if (v === 'today') html = renderGenericList('Hoje', 'Agenda do dia', [['Reunião projeto 10:00', 'Teams', 'Evento'], ['Validar sensor', 'Elevador 3', 'Task']]);
+      else if (v === 'inbox') html = renderGenericList('Inbox', '3 itens por classificar', [['Nota rápida cabo X', 'Sem área', 'Nota'], ['Ligar fornecedor', 'Inbox', 'Task']]);
+      else if (v === 'calendar') html = renderGenericList('Calendário', 'Junho 2026', [['18 — Reunião', '10:00', 'Evento'], ['20 — Entrega BOM', '—', 'Lembrete']]);
+      else if (v === 'timeline') html = '<div class="empty">Linha temporal — vista horizontal de atividade</div>';
+      else if (v === 'review') html = renderGenericList('Revisão semanal', 'Resumo da semana', [['Tasks concluídas', '14', 'OK'], ['Horas', '28h', 'OK']]);
+      else if (v === 'stats') html = renderDashboard();
+      else if (v === 'tasks') html = `<h1 class="page-title">Tarefas</h1><p class="page-sub">${TASKS.length} tarefas</p>${renderTaskTable(TASKS, true)}`;
+      else if (v === 'overdue') html = `<h1 class="page-title">Atrasadas</h1><p class="page-sub">2 tarefas</p>${renderTaskTable(TASKS.filter((t) => t.pri === 'urgent'), true)}`;
+      else if (v === 'pinned') html = renderGenericList('Fixadas', 'Itens com pin', [['BOM Quadro Y', 'Elevador 3', 'Task']]);
+      else if (v === 'blocked') html = renderGenericList('Bloqueadas', 'À espera de resposta', [['Aguardar fornecedor', 'Siemens', 'Blocked']]);
+      else if (v === 'projects') html = renderProjectsList();
+      else if (v === 'kanban') html = renderKanban();
+      else if (v === 'clients') html = renderGenericList('Clientes', 'CRM', [['Cliente ABC', 'Ativo', 'Lead'], ['Siemens', 'Ativo', 'Active']]);
+      else if (v === 'vault') html = '<div class="empty">Vault — credenciais encriptadas</div>';
+      else if (v === 'contacts') html = renderGenericList('Contactos', '12 contactos', [['Fornecedor ABC', 'fornecedor@abc.pt', 'Work']]);
+      else if (v === 'emails') html = renderGenericList('Emails', '4 contas', [['Work', 'you@siemens.com', 'Gmail']]);
+      else if (v === 'links') html = renderGenericList('Links', 'Bookmarks', [['Docs PLC', 'siemens.com', 'Dev']]);
+      else if (v === 'subscriptions') html = renderGenericList('Subscrições', 'Custos mensais', [['GitHub', '€4/mês', 'Dev']]);
+      else if (v === 'templates') html = renderGenericList('Modelos', 'Templates', [['Notas reunião', 'Built-in', 'Note']]);
+      else if (v === 'tools') html = renderGenericList('Ferramentas', 'Calculadoras e utilitários', [['Médias escolares', 'University', 'Tool']]);
+      else if (v === 'archive') html = renderGenericList('Arquivo', 'Itens arquivados', [['Task antiga', '2025', 'Archived']]);
+      else if (v === 'areas') html = renderGenericList('Áreas', 'Workspaces', [['Work', '3 projetos', 'Area'], ['Personal', '12 itens', 'Area']]);
+      else if (v === 'personalization') html = renderPersonalization();
+      else if (v === 'accessibility') html = renderGenericList('Acessibilidade', 'Opções visuais', [['Texto maior', 'Off', 'Toggle'], ['Alto contraste', 'Off', 'Toggle']]);
+      else if (v === 'settings') html = renderSettings();
+      else html = '<div class="empty">Vista em construção no protótipo</div>';
+
+      el.innerHTML = html;
+
+      el.querySelectorAll('[data-project]').forEach((card) => {
+        card.addEventListener('click', () => openProject(card.dataset.project));
+      });
+    }
+
+    function render() {
+      renderSidebar();
+      renderBreadcrumb();
+      renderTabs();
+      renderContent();
+    }
+
+    render();
+  </script>
+</body>
+</html>
