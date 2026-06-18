@@ -137,6 +137,51 @@ function migrateProject(raw) {
   return p;
 }
 
+function isElevadorProject(project) {
+  return /elevador/i.test(project?.name || '');
+}
+
+function inferDisplaySensorStage(item) {
+  if (item.type !== 'task' && item.type !== 'checklist') return '';
+  const text = `${item.title || ''} ${item.body || ''}`.toLowerCase();
+  if (/display|ecr[aã]|piso\s*display|bot[aã]o\/?led|led\s*\d|urg[eê]ncia.*display|\dº\s*piso\s*display/i.test(text)) {
+    return 'Displays';
+  }
+  if (/sensor|soldagem sensores|soldar.*sensor|shant|shunt/i.test(text)) {
+    return 'Sensores';
+  }
+  return '';
+}
+
+function migrateElevadorDisplaySensorStages(state) {
+  const focus = ['Displays', 'Sensores'];
+  const migrated = !!state.settings?.elevadorDisplaySensorStagesV1;
+
+  for (const project of state.projects) {
+    if (!isElevadorProject(project)) continue;
+
+    const existing = project.stages?.length ? [...project.stages] : [];
+    const merged = [...focus];
+    for (const s of existing) {
+      if (!merged.includes(s)) merged.push(s);
+    }
+    project.stages = merged;
+
+    for (const item of state.items) {
+      if (item.projectId !== project.id) continue;
+      const inferred = inferDisplaySensorStage(item);
+      if (!inferred) continue;
+      if (!migrated || !item.projectStage) {
+        item.projectStage = inferred;
+      }
+    }
+  }
+
+  if (!migrated) {
+    state.settings.elevadorDisplaySensorStagesV1 = true;
+  }
+}
+
 function migrateState(raw) {
   if (!raw) return defaultState();
   if (!raw.version || raw.version < 3) {
@@ -177,6 +222,7 @@ function migrateState(raw) {
   };
   state.vaultUnlocked = false;
   state.grades = raw.grades || [];
+  migrateElevadorDisplaySensorStages(state);
   return state;
 }
 

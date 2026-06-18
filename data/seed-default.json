@@ -126,6 +126,10 @@
       "estimatedHours": 0,
       "loggedHours": 0,
       "versions": [],
+      "stages": [
+        "Displays",
+        "Sensores"
+      ],
       "archived": false,
       "createdAt": "2026-06-15T10:05:01.096Z",
       "updatedAt": "2026-06-15T10:05:01.096Z"
@@ -738,6 +742,7 @@
       "linkCategoryId": null,
       "equipmentRef": "",
       "partNumbers": "",
+      "projectStage": "Sensores",
       "hoursLogged": 0,
       "pinned": false,
       "archived": false,
@@ -778,6 +783,7 @@
       "linkCategoryId": null,
       "equipmentRef": "",
       "partNumbers": "",
+      "projectStage": "Sensores",
       "hoursLogged": 0,
       "pinned": false,
       "archived": false,
@@ -824,6 +830,7 @@
       "linkCategoryId": null,
       "equipmentRef": "",
       "partNumbers": "",
+      "projectStage": "Displays",
       "hoursLogged": 0,
       "pinned": false,
       "archived": false,
@@ -864,6 +871,7 @@
       "linkCategoryId": null,
       "equipmentRef": "",
       "partNumbers": "",
+      "projectStage": "Displays",
       "hoursLogged": 0,
       "pinned": false,
       "archived": false,
