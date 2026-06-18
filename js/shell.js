@@ -138,7 +138,7 @@ const AppShell = {
 
   todayEventCount() {
     const today = Utils.todayStr();
-    return Store.getItems({ types: ['event', 'reminder'] }).filter((i) => i.startDate?.startsWith(today)).length;
+    return Store.getItems({ types: ['event', 'reminder'], date: today }).length;
   },
 
   render() {

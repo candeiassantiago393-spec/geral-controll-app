@@ -65,6 +65,149 @@ const AppModals = {
     slot.innerHTML = this.projectStageFieldHtml(item);
   },
 
+  scheduleDatesFieldHtml(item = {}, presetDate = null) {
+    const dates = Utils.itemScheduleDates(item);
+    const mode = item?.scheduleMode || Utils.detectScheduleMode(dates) || 'single';
+    const single = dates[0] || presetDate || Utils.todayStr();
+    const rangeFrom = dates[0] || presetDate || '';
+    const rangeTo = dates.length > 1 && mode === 'range' ? dates[dates.length - 1] : '';
+    const startTime = item?.startDate?.includes('T') ? item.startDate.slice(11, 16) : '09:00';
+    const modes = [
+      ['single', 'schedule.mode.single'],
+      ['range', 'schedule.mode.range'],
+      ['multiple', 'schedule.mode.multiple'],
+    ];
+    return `<div class="form-group" id="schedule-field-wrap">
+      <label>${I18n.t('field.schedule')}</label>
+      <div class="schedule-mode-tabs">
+        ${modes.map(([val, key]) => `
+          <label class="schedule-mode-tab ${mode === val ? 'active' : ''}">
+            <input type="radio" name="scheduleMode" value="${val}" ${mode === val ? 'checked' : ''}>
+            ${I18n.t(key)}
+          </label>`).join('')}
+      </div>
+      <div id="schedule-panel-single" class="schedule-panel ${mode !== 'single' ? 'hidden' : ''}">
+        <input class="form-control" type="date" name="scheduleSingle" value="${single}">
+      </div>
+      <div id="schedule-panel-range" class="schedule-panel ${mode !== 'range' ? 'hidden' : ''}">
+        <div class="form-row">
+          <div class="form-group"><label>${I18n.t('schedule.from')}</label>
+            <input class="form-control" type="date" name="scheduleFrom" value="${rangeFrom}"></div>
+          <div class="form-group"><label>${I18n.t('schedule.to')}</label>
+            <input class="form-control" type="date" name="scheduleTo" value="${rangeTo}"></div>
+        </div>
+        <p class="muted sm" id="schedule-range-preview"></p>
+      </div>
+      <div id="schedule-panel-multiple" class="schedule-panel ${mode !== 'multiple' ? 'hidden' : ''}">
+        <div class="schedule-dates-list" id="schedule-dates-list">
+          ${dates.map((d) => this.scheduleDateChipHtml(d)).join('')}
+        </div>
+        <div class="schedule-add-row">
+          <input class="form-control" type="date" id="schedule-new-date">
+          <button type="button" class="btn btn-sm" id="schedule-add-date-btn">${I18n.t('schedule.addDay')}</button>
+        </div>
+      </div>
+      <p class="muted sm mt" id="schedule-summary">${dates.length ? Utils.fmtScheduleDates(dates) : ''}</p>
+      <div class="form-row mt">
+        <div class="form-group"><label>${I18n.t('field.startTime')}</label>
+          <input class="form-control" type="time" name="startTime" value="${startTime}"></div>
+      </div>
+    </div>`;
+  },
+
+  scheduleDateChipHtml(dateStr) {
+    return `<span class="schedule-date-chip">
+      ${Utils.fmtDate(dateStr)}
+      <input type="hidden" name="scheduleDates" value="${dateStr}">
+      <button type="button" class="schedule-date-remove" data-action="remove-schedule-date" data-date="${dateStr}" title="${I18n.t('action.delete')}">×</button>
+    </span>`;
+  },
+
+  wireScheduleField() {
+    const wrap = document.getElementById('schedule-field-wrap');
+    if (!wrap) return;
+    const panels = {
+      single: document.getElementById('schedule-panel-single'),
+      range: document.getElementById('schedule-panel-range'),
+      multiple: document.getElementById('schedule-panel-multiple'),
+    };
+    const showMode = (mode) => {
+      Object.entries(panels).forEach(([k, el]) => el?.classList.toggle('hidden', k !== mode));
+      wrap.querySelectorAll('.schedule-mode-tab').forEach((tab) => {
+        tab.classList.toggle('active', tab.querySelector('input')?.value === mode);
+      });
+      this.updateSchedulePreview();
+    };
+    wrap.querySelectorAll('input[name="scheduleMode"]').forEach((radio) => {
+      radio.addEventListener('change', () => showMode(radio.value));
+    });
+    wrap.querySelector('[name="scheduleFrom"]')?.addEventListener('change', () => this.updateSchedulePreview());
+    wrap.querySelector('[name="scheduleTo"]')?.addEventListener('change', () => this.updateSchedulePreview());
+    wrap.querySelector('[name="scheduleSingle"]')?.addEventListener('change', () => this.updateSchedulePreview());
+    document.getElementById('schedule-add-date-btn')?.addEventListener('click', () => {
+      const picker = document.getElementById('schedule-new-date');
+      const d = picker?.value;
+      if (!d) return;
+      const list = document.getElementById('schedule-dates-list');
+      const existing = [...list.querySelectorAll('input[name="scheduleDates"]')].map((el) => el.value);
+      if (existing.includes(d)) return;
+      list.insertAdjacentHTML('beforeend', this.scheduleDateChipHtml(d));
+      picker.value = '';
+      this.updateSchedulePreview();
+    });
+    wrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action="remove-schedule-date"]');
+      if (!btn) return;
+      btn.closest('.schedule-date-chip')?.remove();
+      this.updateSchedulePreview();
+    });
+    this.updateSchedulePreview();
+  },
+
+  updateSchedulePreview() {
+    const wrap = document.getElementById('schedule-field-wrap');
+    if (!wrap) return;
+    const mode = wrap.querySelector('input[name="scheduleMode"]:checked')?.value || 'single';
+    let dates = [];
+    if (mode === 'single') {
+      const d = wrap.querySelector('[name="scheduleSingle"]')?.value;
+      if (d) dates = [d];
+    } else if (mode === 'range') {
+      const from = wrap.querySelector('[name="scheduleFrom"]')?.value;
+      const to = wrap.querySelector('[name="scheduleTo"]')?.value;
+      if (from && to) dates = Utils.expandDateRange(from, to);
+      else if (from) dates = [from];
+      const prev = document.getElementById('schedule-range-preview');
+      if (prev && from && to) {
+        prev.textContent = I18n.t('schedule.rangePreview')
+          .replace('{n}', dates.length)
+          .replace('{from}', Utils.fmtDate(from))
+          .replace('{to}', Utils.fmtDate(to));
+      } else if (prev) prev.textContent = '';
+    } else {
+      dates = [...wrap.querySelectorAll('input[name="scheduleDates"]')].map((el) => el.value).sort();
+    }
+    const summary = document.getElementById('schedule-summary');
+    if (summary) summary.textContent = dates.length ? Utils.fmtScheduleDates(dates) : '';
+  },
+
+  parseScheduleFromForm(fd) {
+    const mode = fd.get('scheduleMode') || 'single';
+    let scheduleDates = [];
+    if (mode === 'single') {
+      const d = fd.get('scheduleSingle');
+      if (d) scheduleDates = [d];
+    } else if (mode === 'range') {
+      const from = fd.get('scheduleFrom');
+      const to = fd.get('scheduleTo');
+      if (from && to) scheduleDates = Utils.expandDateRange(from, to);
+      else if (from) scheduleDates = [from];
+    } else {
+      scheduleDates = [...new Set(fd.getAll('scheduleDates').map((d) => String(d).slice(0, 10)).filter(Boolean))].sort();
+    }
+    return { scheduleMode: mode, scheduleDates };
+  },
+
   extraFields(item, type) {
     let html = '';
     if (['link', 'document'].includes(type)) {
@@ -405,7 +548,6 @@ const AppModals = {
   openItemModal(id = null, presetDate = null, presetProjectId = null, presetType = null) {
     const item = id ? Store.getItem(id) : null;
     if (item) Store.trackRecent(item.id);
-    const today = presetDate || Utils.todayStr();
     const type = item?.type || presetType || 'note';
 
     this.openModal(`<div class="modal modal-lg"><div class="modal-header"><h2>${item ? 'Edit' : 'New'} item</h2>
@@ -416,8 +558,7 @@ const AppModals = {
         <div class="form-group"><label>Title</label><input class="form-control" name="title" required value="${Utils.esc(item?.title || '')}"></div>
         <div class="form-group"><label>Content</label><textarea class="form-control" name="body" rows="5">${Utils.esc(item?.body || '')}</textarea></div>
         ${this.layerOptions(item || { projectId: presetProjectId })}
-        <div class="form-row"><div class="form-group"><label>Start date</label><input class="form-control" type="date" name="startDate" value="${item?.startDate?.slice(0, 10) || today}"></div>
-        <div class="form-group"><label>Due date</label><input class="form-control" type="date" name="dueDate" value="${item?.dueDate || ''}"></div></div>
+        ${this.scheduleDatesFieldHtml(item, presetDate)}
         <div class="form-row"><div class="form-group"><label>Duration (min)</label><input class="form-control" type="number" name="duration" value="${item?.duration || ''}"></div>
         <div class="form-group"><label>Location / Link</label><input class="form-control" name="location" value="${Utils.esc(item?.location || '')}"></div></div>
         <div id="extra-fields">${this.extraFields(item, type)}</div>
@@ -431,6 +572,7 @@ const AppModals = {
         <button type="button" class="btn" data-action="close-modal">Cancel</button>
         <button type="submit" class="btn btn-primary">Save</button></div></form></div>`);
 
+    this.wireScheduleField();
     document.getElementById('item-type-select')?.addEventListener('change', (e) => {
       document.getElementById('extra-fields').innerHTML = this.extraFields(item, e.target.value);
       document.getElementById('layer-project')?.addEventListener('change', () => this.refreshProjectStageField(item));
@@ -451,7 +593,19 @@ const AppModals = {
       data.contactGroupId = data.contactGroupId || null;
       data.linkCategoryId = data.linkCategoryId || null;
       data.inbox = !data.areaId && !data.projectId;
-      if (data.startDate && !data.startDate.includes('T')) data.startDate = data.startDate + 'T09:00';
+      const schedule = this.parseScheduleFromForm(fd);
+      data.scheduleMode = schedule.scheduleMode;
+      data.scheduleDates = schedule.scheduleDates;
+      delete data.scheduleSingle;
+      delete data.scheduleFrom;
+      delete data.scheduleTo;
+      delete data.dueDate;
+      delete data.startDate;
+      const startTime = fd.get('startTime');
+      if (startTime && schedule.scheduleDates.length) {
+        data.startDate = `${schedule.scheduleDates[0]}T${startTime}`;
+      }
+      delete data.startTime;
       if (data.contactEmail || data.contactPhone || data.contactCompany) {
         data.contactInfo = { email: data.contactEmail || '', phone: data.contactPhone || '', company: data.contactCompany || '' };
       }

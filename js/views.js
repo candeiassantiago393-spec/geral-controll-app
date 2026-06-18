@@ -11,7 +11,9 @@ const AppViews = {
       const stages = Store.getItemProjectStages(item);
       if (stages.length) parts.push(stages.join(' · '));
     }
-    if (item.dueDate) parts.push(`Due: ${Utils.fmtDate(item.dueDate)}`);
+    const dates = Utils.itemScheduleDates(item);
+    if (dates.length) parts.push(Utils.fmtScheduleDates(dates));
+    else if (item.dueDate) parts.push(`Due: ${Utils.fmtDate(item.dueDate)}`);
     if (item.duration) parts.push(`${item.duration} min`);
     if (item.hoursLogged) parts.push(Utils.fmtHours(item.hoursLogged));
     if (item.workStatus && item.workStatus !== 'In progress') parts.push(item.workStatus);
@@ -233,15 +235,13 @@ const AppViews = {
 
   renderToday() {
     const today = Utils.todayStr();
-    let events = App.getFilteredItems({ types: ['event', 'reminder'] }).filter((i) => i.startDate?.startsWith(today));
+    let events = App.getFilteredItems({ types: ['event', 'reminder'], date: today });
     let tasks = App.getFilteredItems({ type: 'task', period: 'day', snoozed: false });
-    let dueToday = App.filterItems(Store.state.items.filter((i) => i.type === 'task' && !i.completed && i.dueDate === today && !i.archived));
-    const allTasks = [...new Map([...tasks, ...dueToday].map((t) => [t.id, t])).values()];
     return `${App.renderScopeBanner()}
       <div class="section-header"><div class="section-title">Events & Reminders</div></div>
       ${events.length ? events.map((i) => this.renderItemCard(i)).join('') : '<p class="muted mb">No events today</p>'}
       <div class="section-header mt"><div class="section-title">Tasks</div></div>
-      ${allTasks.length ? allTasks.map((i) => this.renderTaskRow(i)).join('') : '<div class="empty-state"><div class="icon">☀</div><h3>Free day</h3></div>'}`;
+      ${tasks.length ? tasks.map((i) => this.renderTaskRow(i)).join('') : '<div class="empty-state"><div class="icon">☀</div><h3>Free day</h3></div>'}`;
   },
 
   renderOverdue() {
@@ -1118,7 +1118,7 @@ const AppViews = {
     const year = App.calendarDate.getFullYear();
     const month = App.calendarDate.getMonth();
     const lastDay = new Date(year, month + 1, 0).getDate();
-    let items = Store.state.items.filter((i) => i.startDate || i.dueDate);
+    let items = Store.state.items.filter((i) => Utils.itemScheduleDates(i).length);
     if (schedule?.enabled) {
       for (let d = 1; d <= lastDay; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -1134,7 +1134,7 @@ const AppViews = {
     return `<div class="section-header"><div class="section-title">Agenda</div>
       <button class="btn btn-sm" data-action="export-ics">Export ICS</button></div>
       ${items.map((i) => `<div class="agenda-row ${i.isSchoolSchedule ? 'school-agenda-row' : ''}" ${i.isSchoolSchedule ? '' : `data-action="open-item" data-id="${i.id}"`}>
-        <div class="agenda-date">${Utils.fmtDate(i.startDate || i.dueDate)} ${Utils.fmtTime(i.startDate)}</div>
+        <div class="agenda-date">${Utils.fmtScheduleDates(Utils.itemScheduleDates(i))} ${Utils.fmtTime(i.startDate)}</div>
         <div>${i.isSchoolSchedule ? '🏫' : Utils.typeIcon(i.type)} ${Utils.esc(i.title)}${i.location ? ` · ${Utils.esc(i.location)}` : ''}</div></div>`).join('') || '<p class="muted">No events</p>'}`;
   },
 

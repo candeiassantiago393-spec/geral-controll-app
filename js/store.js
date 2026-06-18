@@ -38,6 +38,42 @@ function syncProjectStageFields(item) {
   return item;
 }
 
+function normalizeScheduleDates(data) {
+  if (Array.isArray(data?.scheduleDates) && data.scheduleDates.length) {
+    return [...new Set(data.scheduleDates.map((d) => String(d).slice(0, 10)).filter(Boolean))].sort();
+  }
+  return Utils.itemScheduleDates(data);
+}
+
+function syncScheduleFields(item) {
+  const dates = normalizeScheduleDates(item);
+  item.scheduleDates = dates;
+  if (!item.scheduleMode || item.scheduleMode === 'single') {
+    item.scheduleMode = Utils.detectScheduleMode(dates);
+  }
+  if (dates.length) {
+    const first = dates[0];
+    const last = dates[dates.length - 1];
+    const time = item.startDate?.includes('T') ? item.startDate.slice(11, 16) : '09:00';
+    item.dueDate = last;
+    item.startDate = `${first}T${time}`;
+    if (item.duration && ['event', 'reminder'].includes(item.type)) {
+      const [hh, mm] = time.split(':').map(Number);
+      const endMin = hh * 60 + mm + (item.duration || 60);
+      const endH = String(Math.floor(endMin / 60) % 24).padStart(2, '0');
+      const endM = String(endMin % 60).padStart(2, '0');
+      item.endDate = `${first}T${endH}:${endM}`;
+    } else if (dates.length > 1 && ['event', 'reminder'].includes(item.type)) {
+      item.endDate = `${last}T${time}`;
+    }
+  } else if ('scheduleDates' in item && !dates.length) {
+    item.dueDate = null;
+    item.startDate = null;
+    item.endDate = null;
+  }
+  return item;
+}
+
 function itemDefaults(data = {}) {
   return {
     id: data.id || uid(),
@@ -53,6 +89,8 @@ function itemDefaults(data = {}) {
     endDate: data.endDate ?? null,
     duration: data.duration ?? null,
     dueDate: data.dueDate ?? null,
+    scheduleDates: normalizeScheduleDates(data),
+    scheduleMode: data.scheduleMode || 'single',
     completed: data.completed || false,
     priority: data.priority || 'normal',
     kanbanStatus: data.kanbanStatus || 'To do',
@@ -135,7 +173,7 @@ function migrateItem(raw) {
   item.kanbanStatus = migrateLegacyValue(item.kanbanStatus, LEGACY_KANBAN_MAP);
   item.workStatus = migrateLegacyValue(item.workStatus, LEGACY_WORK_MAP);
   item.priority = migrateLegacyValue(item.priority, LEGACY_PRIORITY);
-  return syncProjectStageFields(item);
+  return syncProjectStageFields(syncScheduleFields(item));
 }
 
 function migrateClient(raw) {
@@ -498,24 +536,34 @@ const Store = {
     if (filter.period) {
       const now = new Date();
       items = items.filter((i) => {
-        const d = i.dueDate || i.startDate?.slice(0, 10) || i.createdAt.slice(0, 10);
-        if (!d) return filter.period === 'all';
-        const date = new Date(d);
-        if (filter.period === 'day') return date.toDateString() === now.toDateString();
-        if (filter.period === 'week') return Utils.isThisWeek(d);
-        if (filter.period === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-        if (filter.period === 'year') return date.getFullYear() === now.getFullYear();
-        return true;
+        const dates = Utils.itemScheduleDates(i);
+        if (!dates.length) {
+          const d = i.createdAt.slice(0, 10);
+          if (filter.period === 'all') return true;
+          const date = new Date(d);
+          if (filter.period === 'day') return date.toDateString() === now.toDateString();
+          if (filter.period === 'week') return Utils.isThisWeek(d);
+          if (filter.period === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+          if (filter.period === 'year') return date.getFullYear() === now.getFullYear();
+          return true;
+        }
+        return dates.some((d) => {
+          const date = new Date(d);
+          if (filter.period === 'day') return date.toDateString() === now.toDateString();
+          if (filter.period === 'week') return Utils.isThisWeek(d);
+          if (filter.period === 'month') return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+          if (filter.period === 'year') return date.getFullYear() === now.getFullYear();
+          return true;
+        });
       });
     }
 
     if (filter.date) {
-      items = items.filter((i) => {
-        const start = i.startDate?.slice(0, 10);
-        const due = i.dueDate;
-        const snooze = i.snoozedUntil;
-        return start === filter.date || due === filter.date || snooze === filter.date;
-      });
+      const day = filter.date.slice(0, 10);
+      items = items.filter((i) =>
+        Utils.itemOccursOnDate(i, day) ||
+        i.snoozedUntil === day
+      );
     }
 
     return items.sort((a, b) => {
@@ -544,6 +592,9 @@ const Store = {
     if (!item) return null;
     Object.assign(item, updates, { updatedAt: new Date().toISOString() });
     if ('projectStages' in updates || 'projectStage' in updates) syncProjectStageFields(item);
+    if ('scheduleDates' in updates || 'scheduleMode' in updates || 'dueDate' in updates || 'startDate' in updates) {
+      syncScheduleFields(item);
+    }
     if (updates.areaId !== undefined || updates.projectId !== undefined) {
       item.inbox = !item.areaId && !item.projectId;
     }

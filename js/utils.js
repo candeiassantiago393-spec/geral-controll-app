@@ -61,8 +61,74 @@ const Utils = {
   },
 
   isOverdue(item) {
-    if (item.type !== 'task' || item.completed || !item.dueDate) return false;
-    return new Date(item.dueDate) < new Date(new Date().toDateString());
+    if (item.type !== 'task' || item.completed) return false;
+    const dates = this.itemScheduleDates(item);
+    const due = dates.length ? dates[dates.length - 1] : item.dueDate;
+    if (!due) return false;
+    return new Date(due) < new Date(new Date().toDateString());
+  },
+
+  expandDateRange(from, to) {
+    if (!from) return [];
+    const end = to || from;
+    if (end < from) return this.expandDateRange(end, from);
+    const dates = [];
+    let cur = from.slice(0, 10);
+    const last = end.slice(0, 10);
+    while (cur <= last) {
+      dates.push(cur);
+      cur = this.addDays(cur, 1);
+    }
+    return dates;
+  },
+
+  isConsecutiveRange(dates) {
+    if (!dates || dates.length < 2) return false;
+    const sorted = [...dates].map((d) => d.slice(0, 10)).sort();
+    for (let i = 1; i < sorted.length; i++) {
+      if (this.addDays(sorted[i - 1], 1) !== sorted[i]) return false;
+    }
+    return true;
+  },
+
+  detectScheduleMode(dates) {
+    if (!dates?.length) return 'single';
+    if (dates.length === 1) return 'single';
+    if (this.isConsecutiveRange(dates)) return 'range';
+    return 'multiple';
+  },
+
+  itemScheduleDates(item) {
+    if (Array.isArray(item?.scheduleDates) && item.scheduleDates.length) {
+      return [...new Set(item.scheduleDates.map((d) => String(d).slice(0, 10)).filter(Boolean))].sort();
+    }
+    const dates = new Set();
+    if (item?.dueDate) dates.add(String(item.dueDate).slice(0, 10));
+    if (item?.startDate) dates.add(String(item.startDate).slice(0, 10));
+    if (item?.endDate) {
+      const endDay = String(item.endDate).slice(0, 10);
+      const startDay = item.startDate?.slice(0, 10);
+      if (startDay && endDay !== startDay) return this.expandDateRange(startDay, endDay);
+      dates.add(endDay);
+    }
+    return [...dates].sort();
+  },
+
+  itemOccursOnDate(item, dateStr) {
+    if (!dateStr) return false;
+    const day = dateStr.slice(0, 10);
+    return this.itemScheduleDates(item).includes(day);
+  },
+
+  fmtScheduleDates(dates) {
+    if (!dates?.length) return '';
+    const sorted = [...dates].map((d) => d.slice(0, 10)).sort();
+    if (sorted.length === 1) return this.fmtDate(sorted[0]);
+    if (this.isConsecutiveRange(sorted)) {
+      return `${this.fmtDate(sorted[0])} – ${this.fmtDate(sorted[sorted.length - 1])}`;
+    }
+    if (sorted.length <= 4) return sorted.map((d) => this.fmtDate(d)).join(', ');
+    return `${sorted.slice(0, 3).map((d) => this.fmtDate(d)).join(', ')} +${sorted.length - 3}`;
   },
 
   isThisWeek(dateStr) {
@@ -121,12 +187,22 @@ const Utils = {
   exportICS(items) {
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//candeias.dev//Candeias//PT'];
     for (const item of items) {
-      if (!item.startDate) continue;
-      const uid = item.id + '@candeias.dev';
-      const start = item.startDate.replace(/[-:]/g, '').replace('.000', '').slice(0, 15);
-      const end = (item.endDate || item.startDate).replace(/[-:]/g, '').slice(0, 15);
-      lines.push('BEGIN:VEVENT', `UID:${uid}`, `DTSTART:${start}`, `DTEND:${end}`,
-        `SUMMARY:${(item.title || '').replace(/,/g, '\\,')}`, 'END:VEVENT');
+      const dates = Utils.itemScheduleDates(item);
+      if (!dates.length && !item.startDate) continue;
+      const days = dates.length ? dates : [item.startDate.slice(0, 10)];
+      const time = item.startDate?.includes('T') ? item.startDate.slice(11, 16) : '09:00';
+      const [hh, mm] = time.split(':').map(Number);
+      const durMin = item.duration || 60;
+      const endMin = hh * 60 + mm + durMin;
+      const endH = String(Math.floor(endMin / 60) % 24).padStart(2, '0');
+      const endM = String(endMin % 60).padStart(2, '0');
+      for (const day of days) {
+        const uid = `${item.id}-${day}@candeias.dev`;
+        const start = `${day}T${time}`.replace(/[-:]/g, '').slice(0, 15);
+        const end = `${day}T${endH}:${endM}`.replace(/[-:]/g, '').slice(0, 15);
+        lines.push('BEGIN:VEVENT', `UID:${uid}`, `DTSTART:${start}`, `DTEND:${end}`,
+          `SUMMARY:${(item.title || '').replace(/,/g, '\\,')}`, 'END:VEVENT');
+      }
     }
     lines.push('END:VCALENDAR');
     const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar' });

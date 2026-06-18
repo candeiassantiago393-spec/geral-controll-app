@@ -956,6 +956,83 @@ a:hover {
   margin: 0;
 }
 
+.schedule-mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.schedule-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.schedule-mode-tab input {
+  display: none;
+}
+
+.schedule-mode-tab.active {
+  border-color: var(--green);
+  background: rgba(0, 210, 106, 0.08);
+  color: var(--green-bright);
+}
+
+.schedule-panel.hidden {
+  display: none;
+}
+
+.schedule-dates-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  min-height: 32px;
+}
+
+.schedule-date-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+
+.schedule-date-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.schedule-date-remove:hover {
+  color: var(--danger);
+}
+
+.schedule-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.schedule-add-row .form-control {
+  flex: 1;
+  max-width: 200px;
+}
+
 .checklist-subrow {
   margin-bottom: 4px;
   padding: 8px 10px;
