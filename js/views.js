@@ -7,6 +7,7 @@ const AppViews = {
       const ctx = Store.getArea(item.areaId)?.subContexts?.find((c) => c.id === item.subContextId);
       if (ctx) parts.push(`${ctx.icon} ${ctx.name}`);
     }
+    if (item.projectId && item.projectStage) parts.push(item.projectStage);
     if (item.dueDate) parts.push(`Due: ${Utils.fmtDate(item.dueDate)}`);
     if (item.duration) parts.push(`${item.duration} min`);
     if (item.hoursLogged) parts.push(Utils.fmtHours(item.hoursLogged));
@@ -592,7 +593,10 @@ const AppViews = {
         <h3 class="sub-heading mt">Work statuses</h3>
         ${this.renderConfigStringList('workStatuses', Store.getWorkStatuses(), 'Internal task status (In progress, Blocked…).')}
         <h3 class="sub-heading mt">Priorities</h3>
-        ${this.renderConfigStringList('priorities', Store.getPriorities(), 'Priority levels on tasks.')}`;
+        ${this.renderConfigStringList('priorities', Store.getPriorities(), 'Priority levels on tasks.')}
+        <h3 class="sub-heading mt">${I18n.t('project.stages')}</h3>
+        ${this.renderConfigStringList('projectStages', Store.getProjectStages(), I18n.t('project.stagesConfigDesc'))}
+        <p class="muted mt sm">${Store.getProjectStages().join(' → ')}</p>`;
     } else if (tab === 'clients') {
       body = `<h3 class="sub-heading">Client statuses</h3>
         ${this.renderConfigStringList('clientStatuses', Store.getClientStatuses(), 'Lead, Active, Inactive…')}
@@ -1165,14 +1169,20 @@ const AppViews = {
       const filterBar = ['notes', 'tasks', 'events', 'contacts', 'links'].includes(App.projectTab)
         ? App.renderProjectItemFilters()
         : '';
-      body = filterBar + (items.length ? items.map((i) => (i.type==='task'||i.type==='checklist') ? this.renderTaskRow(i) : this.renderItemCard(i)).join('') : '<div class="empty-state"><p>No items</p></div>');
+      const stageBar = App.projectTab === 'tasks' ? App.renderProjectStageFilters(projectId) : '';
+      body = filterBar + stageBar + (items.length ? items.map((i) => (i.type==='task'||i.type==='checklist') ? this.renderTaskRow(i) : this.renderItemCard(i)).join('') : '<div class="empty-state"><p>No items</p></div>');
     }
+    const stages = Store.getProjectStagesForProject(projectId);
+    const stagesLine = stages.length
+      ? `<p class="muted sm mb">${I18n.t('project.stages')}: ${stages.map((s) => Utils.esc(s)).join(' → ')}</p>`
+      : '';
     return `<button class="btn btn-ghost btn-sm mb" data-action="back-projects">${I18n.t('projects.back')}</button>
       <div class="project-header mb"><div class="project-color" style="background:${project.color};height:56px"></div>
       <div><div class="project-name lg">${Utils.esc(project.name)}</div>
       <div class="project-client">${area?.icon} ${Utils.esc(area?.name)} · ${Utils.esc(project.client)}</div>
       ${project.clientEmail?`<p class="muted">${Utils.esc(project.clientEmail)} · ${Utils.esc(project.clientPhone)}</p>`:''}
       ${project.url?`<a href="${Utils.esc(project.url)}" target="_blank">${Utils.esc(project.url)}</a>`:''}</div></div>
+      ${stagesLine}
       <div class="project-tabs">${tabHtml}</div>${body}`;
   },
 

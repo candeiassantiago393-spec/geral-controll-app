@@ -8,6 +8,7 @@ const App = {
   projectTab: 'overview',
   projectFilter: 'active',
   projectItemFilter: 'all',
+  projectStageFilter: null,
   projectItemSort: 'date-desc',
   currentHub: 'home',
   taskFilter: 'all',
@@ -484,10 +485,11 @@ const App = {
 
   filterProjectItems(items) {
     const f = this.projectItemFilter || 'all';
-    if (f === 'open') return items.filter((i) => !i.completed);
-    if (f === 'done') return items.filter((i) => i.completed);
-    if (f === 'overdue') return items.filter((i) => Utils.isOverdue(i));
-    if (f === 'urgent') return items.filter((i) => i.priority === 'urgent' || i.priority === 'high');
+    if (f === 'open') items = items.filter((i) => !i.completed);
+    else if (f === 'done') items = items.filter((i) => i.completed);
+    else if (f === 'overdue') items = items.filter((i) => Utils.isOverdue(i));
+    else if (f === 'urgent') items = items.filter((i) => i.priority === 'urgent' || i.priority === 'high');
+    if (this.projectStageFilter) items = items.filter((i) => i.projectStage === this.projectStageFilter);
     return items;
   },
 
@@ -533,6 +535,16 @@ const App = {
       ${filters.map(([f, key]) => `<button class="filter-chip ${this.projectItemFilter === f ? 'active' : ''}" data-action="proj-item-filter" data-filter="${f}">${I18n.t(key)}</button>`).join('')}
       <span class="filter-sep"></span>
       ${sorts.map(([s, key]) => `<button class="filter-chip ${this.projectItemSort === s ? 'active' : ''}" data-action="proj-item-sort" data-sort="${s}">${I18n.t(key)}</button>`).join('')}
+    </div>`;
+  },
+
+  renderProjectStageFilters(projectId) {
+    const stages = Store.getProjectStagesForProject(projectId);
+    if (!stages.length) return '';
+    return `<div class="filter-row mb">
+      <span class="muted sm">${I18n.t('project.stagesFilter')}:</span>
+      <button class="filter-chip ${!this.projectStageFilter ? 'active' : ''}" data-action="proj-stage-filter" data-stage="">${I18n.t('project.filter.all')}</button>
+      ${stages.map((s) => `<button class="filter-chip ${this.projectStageFilter === s ? 'active' : ''}" data-action="proj-stage-filter" data-stage="${Utils.esc(s)}">${Utils.esc(s)}</button>`).join('')}
     </div>`;
   },
 
@@ -774,6 +786,7 @@ const App = {
 
   openProject(id) {
     if (!id || !Store.getProject(id)) return;
+    if (this.projectDetailId !== id) this.projectStageFilter = null;
     this.projectDetailId = id;
     this.currentHub = 'projects';
     if (this.currentView !== 'projects') {
@@ -1575,6 +1588,7 @@ const App = {
       case 'save-search': { const name = prompt('Search name?'); if (name) { Store.addSavedSearch(name, { q: this.searchQuery, type: this.searchType }); alert('Saved!'); } } break;
       case 'proj-filter': this.projectFilter = ds.filter; this.render(); break;
       case 'proj-item-filter': this.projectItemFilter = ds.filter; this.render(); break;
+      case 'proj-stage-filter': this.projectStageFilter = ds.stage || null; this.render(); break;
       case 'proj-item-sort': this.projectItemSort = ds.sort; this.render(); break;
       case 'open-client': this.openClient(id); break;
       case 'back-clients': this.clientDetailId = null; this.render(); break;

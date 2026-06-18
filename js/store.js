@@ -49,6 +49,7 @@ function itemDefaults(data = {}) {
     linkCategoryId: data.linkCategoryId ?? null,
     equipmentRef: data.equipmentRef || '',
     partNumbers: data.partNumbers || '',
+    projectStage: data.projectStage || '',
     hoursLogged: data.hoursLogged ?? 0,
     pinned: data.pinned || false,
     archived: data.archived || false,
@@ -79,6 +80,7 @@ function projectDefaults(data = {}) {
     estimatedHours: data.estimatedHours ?? 0,
     loggedHours: data.loggedHours ?? 0,
     versions: data.versions || [],
+    stages: data.stages?.length ? data.stages : null,
     archived: data.archived || false,
     createdAt: data.createdAt || new Date().toISOString(),
     updatedAt: data.updatedAt || data.createdAt || new Date().toISOString(),
@@ -151,6 +153,7 @@ function migrateState(raw) {
     vaultFolders: raw.settings?.vaultFolders?.length ? raw.settings.vaultFolders : defaultVaultFolders(),
     quickTags: raw.settings?.quickTags?.length ? raw.settings.quickTags : [...QUICK_TAGS],
     kanbanColumns: raw.settings?.kanbanColumns?.length ? raw.settings.kanbanColumns : defaultKanbanColumns(),
+    projectStages: raw.settings?.projectStages?.length ? raw.settings.projectStages : defaultProjectStages(),
     pipelineStages: raw.settings?.pipelineStages?.length ? raw.settings.pipelineStages : defaultPipelineStages(),
     workStatuses: raw.settings?.workStatuses?.length ? raw.settings.workStatuses : defaultWorkStatuses(),
     clientStatuses: raw.settings?.clientStatuses?.length ? raw.settings.clientStatuses : defaultClientStatuses(),
@@ -411,7 +414,8 @@ const Store = {
         i.url?.toLowerCase().includes(q) ||
         i.tags.some((t) => t.toLowerCase().includes(q)) ||
         i.contactInfo?.email?.toLowerCase().includes(q) ||
-        i.equipmentRef?.toLowerCase().includes(q)
+        i.equipmentRef?.toLowerCase().includes(q) ||
+        i.projectStage?.toLowerCase().includes(q)
       );
     }
 
@@ -667,7 +671,7 @@ const Store = {
       hoursLogged: this.state.projects.reduce((s, p) => s + (p.loggedHours || 0), 0),
       subscriptions: this.state.subscriptions.length,
       clients: this.getClients().length,
-      clientsActive: this.getClients({ status: 'Ativo' }).length,
+      clientsActive: this.getClients({ status: 'Active' }).length,
       leads: this.getClients({ status: 'Lead' }).length,
     };
   },
@@ -871,6 +875,7 @@ const Store = {
   _configListDefaults() {
     return {
       kanbanColumns: defaultKanbanColumns,
+      projectStages: defaultProjectStages,
       pipelineStages: defaultPipelineStages,
       workStatuses: defaultWorkStatuses,
       clientStatuses: defaultClientStatuses,
@@ -898,6 +903,12 @@ const Store = {
       case 'kanbanColumns':
         this.state.items.forEach((i) => { if (i.kanbanStatus === oldVal) i.kanbanStatus = fallback; });
         break;
+      case 'projectStages':
+        this.state.items.forEach((i) => { if (i.projectStage === oldVal) i.projectStage = fallback; });
+        this.state.projects.forEach((p) => {
+          if (p.stages?.length) p.stages = p.stages.map((s) => (s === oldVal ? fallback : s));
+        });
+        break;
       case 'workStatuses':
         this.state.items.forEach((i) => { if (i.workStatus === oldVal) i.workStatus = fallback; });
         break;
@@ -922,6 +933,14 @@ const Store = {
   },
 
   getKanbanColumns() { return this._getConfigList('kanbanColumns'); },
+  getProjectStages() { return this._getConfigList('projectStages'); },
+
+  getProjectStagesForProject(projectId) {
+    const project = projectId ? this.getProject(projectId) : null;
+    if (project?.stages?.length) return [...project.stages];
+    return this.getProjectStages();
+  },
+
   getPipelineStages() { return this._getConfigList('pipelineStages'); },
   getWorkStatuses() { return this._getConfigList('workStatuses'); },
   getClientStatuses() { return this._getConfigList('clientStatuses'); },
@@ -1107,6 +1126,7 @@ const Store = {
       vaultFolders: this.getVaultFolders(),
       quickTags: this.getQuickTags(),
       kanbanColumns: this.getKanbanColumns(),
+      projectStages: this.getProjectStages(),
       pipelineStages: this.getPipelineStages(),
       workStatuses: this.getWorkStatuses(),
       clientStatuses: this.getClientStatuses(),
@@ -1129,6 +1149,7 @@ const Store = {
     if (data.vaultFolders?.length) s.vaultFolders = data.vaultFolders;
     if (data.quickTags?.length) s.quickTags = data.quickTags;
     if (data.kanbanColumns?.length) s.kanbanColumns = data.kanbanColumns;
+    if (data.projectStages?.length) s.projectStages = data.projectStages;
     if (data.pipelineStages?.length) s.pipelineStages = data.pipelineStages;
     if (data.workStatuses?.length) s.workStatuses = data.workStatuses;
     if (data.clientStatuses?.length) s.clientStatuses = data.clientStatuses;

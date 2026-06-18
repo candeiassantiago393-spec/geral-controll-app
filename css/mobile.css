@@ -662,6 +662,29 @@
     font-size: 10px;
   }
 
+  .stats-charts-grid,
+  .stats-extras-grid {
+    gap: 12px;
+  }
+
+  .chart-panel {
+    padding: 14px;
+    min-height: 0;
+  }
+
+  .chart-bars {
+    height: 120px;
+  }
+
+  .chart-donut {
+    width: 100px;
+    height: 100px;
+  }
+
+  .chart-donut-hole {
+    inset: 18px;
+  }
+
   .btn-row .btn-sm {
     font-size: 11px;
     padding: 6px 8px;

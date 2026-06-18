@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'candeias_app_v3';
 const _metaVersion = document.querySelector('meta[name="app-version"]')?.content?.trim();
-const APP_VERSION = (_metaVersion && !_metaVersion.includes('__CANDEIAS')) ? _metaVersion : '3.3.9';
+const APP_VERSION = (_metaVersion && !_metaVersion.includes('__CANDEIAS')) ? _metaVersion : '3.3.10';
 
 const ITEM_TYPES = {
   note: { label: 'Note', icon: '📝' },
@@ -89,6 +89,10 @@ const ACCESSIBILITY_OPTIONS = [
   { key: 'underlineLinks', label: 'Underline links', desc: 'Links always underlined for easy identification.' },
 ];
 
+const PROJECT_STAGES = [
+  'Planning', 'Assembly', 'Wiring', 'Commissioning', 'Testing', 'Delivery',
+];
+
 const KANBAN_COLUMNS = ['To do', 'Today', 'In progress', 'Blocked', 'Done'];
 
 const WORK_STATUSES = ['In progress', 'Waiting', 'Blocked', 'Completed'];
@@ -134,6 +138,10 @@ const DEFAULT_AREAS = [
   },
   { id: 'area-uni', name: 'University', icon: '📚', color: '#10b981', subContexts: [] },
 ];
+
+function defaultProjectStages() {
+  return [...PROJECT_STAGES];
+}
 
 function defaultKanbanColumns() {
   return [...KANBAN_COLUMNS];

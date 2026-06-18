@@ -29,12 +29,33 @@ const AppModals = {
     const projectSel = document.getElementById('layer-project');
     const subCtxSel = document.getElementById('layer-subctx');
     if (!projectSel || !subCtxSel) return;
+    const prevProject = projectSel.value;
     projectSel.innerHTML = '<option value="">— No project —</option>';
     subCtxSel.innerHTML = '<option value="">— No context —</option>';
     if (areaId) {
       Store.getProjectsByArea(areaId).forEach((p) => { projectSel.innerHTML += `<option value="${p.id}">${Utils.esc(p.name)}</option>`; });
       Store.getArea(areaId)?.subContexts?.forEach((c) => { subCtxSel.innerHTML += `<option value="${c.id}">${c.icon} ${Utils.esc(c.name)}</option>`; });
     }
+    if (prevProject && [...projectSel.options].some((o) => o.value === prevProject)) projectSel.value = prevProject;
+    this.refreshProjectStageField();
+  },
+
+  projectStageFieldHtml(item = {}) {
+    const projectId = document.getElementById('layer-project')?.value || item.projectId || '';
+    const stages = projectId ? Store.getProjectStagesForProject(projectId) : [];
+    if (!stages.length) return '';
+    const selected = document.querySelector('[name=projectStage]')?.value ?? item.projectStage ?? '';
+    return `<div class="form-group" id="stage-field-wrap"><label>${I18n.t('field.projectStage')}</label>
+      <select class="form-control" name="projectStage">
+        <option value="">—</option>
+        ${stages.map((s) => `<option value="${Utils.esc(s)}" ${selected === s ? 'selected' : ''}>${Utils.esc(s)}</option>`).join('')}
+      </select></div>`;
+  },
+
+  refreshProjectStageField(item = {}) {
+    const slot = document.getElementById('stage-field-slot');
+    if (!slot) return;
+    slot.innerHTML = this.projectStageFieldHtml(item);
   },
 
   extraFields(item, type) {
@@ -67,6 +88,7 @@ const AppModals = {
       html += `<div class="form-row">
         <div class="form-group"><label>Work status</label><select class="form-control" name="workStatus">${Store.getWorkStatuses().map((s) => `<option ${item?.workStatus === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         <div class="form-group"><label>Kanban</label><select class="form-control" name="kanbanStatus">${Store.getKanbanColumns().map((s) => `<option ${item?.kanbanStatus === s ? 'selected' : ''}>${s}</option>`).join('')}</select></div></div>
+        <div id="stage-field-slot">${this.projectStageFieldHtml(item)}</div>
         <div class="form-group"><label>Equipment ref.</label><input class="form-control" name="equipmentRef" value="${Utils.esc(item?.equipmentRef || '')}" placeholder="Quadro 12"></div>
         <div class="form-group"><label>Part numbers / BOM</label><input class="form-control" name="partNumbers" value="${Utils.esc(item?.partNumbers || '')}"></div>
         <div class="form-group"><label>Hours logged</label><input class="form-control" type="number" step="0.5" name="hoursLogged" value="${item?.hoursLogged || ''}"></div>`;
@@ -81,6 +103,7 @@ const AppModals = {
   openModal(html) {
     document.getElementById('modal-root').innerHTML = `<div class="modal-overlay" id="modal-overlay">${html}</div>`;
     document.getElementById('layer-area')?.addEventListener('change', () => this.updateLayerSelects());
+    document.getElementById('layer-project')?.addEventListener('change', () => this.refreshProjectStageField());
   },
 
   closeModal() { document.getElementById('modal-root').innerHTML = ''; },
@@ -403,6 +426,7 @@ const AppModals = {
 
     document.getElementById('item-type-select')?.addEventListener('change', (e) => {
       document.getElementById('extra-fields').innerHTML = this.extraFields(item, e.target.value);
+      document.getElementById('layer-project')?.addEventListener('change', () => this.refreshProjectStageField(item));
     });
     document.getElementById('item-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -414,6 +438,7 @@ const AppModals = {
       data.tags = Utils.parseTags(data.tags);
       data.duration = data.duration ? parseInt(data.duration, 10) : null;
       data.hoursLogged = data.hoursLogged ? parseFloat(data.hoursLogged) : 0;
+      data.projectStage = data.projectStage || '';
       data.pinned = !!fd.get('pinned');
       data.contactGroupId = data.contactGroupId || null;
       data.linkCategoryId = data.linkCategoryId || null;
@@ -466,6 +491,9 @@ const AppModals = {
         <div class="form-row"><div class="form-group"><label>Estimated hours</label><input class="form-control" type="number" name="estimatedHours" value="${project?.estimatedHours ?? ''}"></div>
         <div class="form-group"><label>URL</label><input class="form-control" name="url" value="${Utils.esc(project?.url || '')}"></div></div>
         <div class="form-group"><label>Description</label><textarea class="form-control" name="description">${Utils.esc(project?.description || '')}</textarea></div>
+        <div class="form-group"><label>${I18n.t('project.stages')}</label>
+          <textarea class="form-control" name="stagesText" rows="4" placeholder="${Utils.esc(Store.getProjectStages().join('\n'))}">${Utils.esc(project?.stages?.join('\n') || '')}</textarea>
+          <p class="muted sm">${I18n.t('project.stagesHint')}</p></div>
       </div><div class="modal-footer"><button type="button" class="btn" data-action="close-modal">${I18n.t('action.cancel')}</button>
       <button type="submit" class="btn btn-primary">${isEdit ? I18n.t('action.save') : I18n.t('action.create')}</button></div></form></div>`);
     const clientSel = document.getElementById('proj-client');
@@ -483,6 +511,9 @@ const AppModals = {
       const data = Object.fromEntries(new FormData(e.target));
       data.clientId = data.clientId || null;
       data.estimatedHours = parseFloat(data.estimatedHours) || 0;
+      const stages = (data.stagesText || '').split('\n').map((s) => s.trim()).filter(Boolean);
+      data.stages = stages.length ? stages : null;
+      delete data.stagesText;
       if (isEdit) Store.updateProject(projectId, data);
       else Store.addProject(data);
       this.closeModal();
