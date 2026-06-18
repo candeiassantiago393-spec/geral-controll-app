@@ -1,6 +1,6 @@
 const STORAGE_KEY = 'candeias_app_v3';
 const _metaVersion = document.querySelector('meta[name="app-version"]')?.content?.trim();
-const APP_VERSION = (_metaVersion && !_metaVersion.includes('__CANDEIAS')) ? _metaVersion : '3.4.7';
+const APP_VERSION = (_metaVersion && !_metaVersion.includes('__CANDEIAS')) ? _metaVersion : '3.4.8';
 
 const ITEM_TYPES = {
   note: { label: 'Note', icon: '📝' },

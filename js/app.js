@@ -9,6 +9,7 @@ const App = {
   projectFilter: 'active',
   projectItemFilter: 'all',
   projectStageFilter: null,
+  projectStageFilterNone: '__none__',
   projectItemSort: 'date-desc',
   currentHub: 'home',
   taskFilter: 'all',
@@ -484,7 +485,11 @@ const App = {
     else if (f === 'done') items = items.filter((i) => i.completed);
     else if (f === 'overdue') items = items.filter((i) => Utils.isOverdue(i));
     else if (f === 'urgent') items = items.filter((i) => i.priority === 'urgent' || i.priority === 'high');
-    if (this.projectStageFilter) items = items.filter((i) => i.projectStage === this.projectStageFilter);
+    if (this.projectStageFilter === this.projectStageFilterNone) {
+      items = items.filter((i) => !i.projectStage);
+    } else if (this.projectStageFilter) {
+      items = items.filter((i) => i.projectStage === this.projectStageFilter);
+    }
     return items;
   },
 
@@ -539,6 +544,7 @@ const App = {
     return `<div class="filter-row mb">
       <span class="muted sm">${I18n.t('project.stagesFilter')}:</span>
       <button class="filter-chip ${!this.projectStageFilter ? 'active' : ''}" data-action="proj-stage-filter" data-stage="">${I18n.t('project.filter.all')}</button>
+      <button class="filter-chip ${this.projectStageFilter === this.projectStageFilterNone ? 'active' : ''}" data-action="proj-stage-filter" data-stage="${this.projectStageFilterNone}">${I18n.t('project.stageGeneral')}</button>
       ${stages.map((s) => `<button class="filter-chip ${this.projectStageFilter === s ? 'active' : ''}" data-action="proj-stage-filter" data-stage="${Utils.esc(s)}">${Utils.esc(s)}</button>`).join('')}
     </div>`;
   },
@@ -1630,7 +1636,10 @@ const App = {
       case 'save-search': { const name = prompt('Search name?'); if (name) { Store.addSavedSearch(name, { q: this.searchQuery, type: this.searchType }); alert('Saved!'); } } break;
       case 'proj-filter': this.projectFilter = ds.filter; this.render(); break;
       case 'proj-item-filter': this.projectItemFilter = ds.filter; this.render(); break;
-      case 'proj-stage-filter': this.projectStageFilter = ds.stage || null; this.render(); break;
+      case 'proj-stage-filter':
+        this.projectStageFilter = ds.stage === '' ? null : ds.stage;
+        this.render();
+        break;
       case 'proj-item-sort': this.projectItemSort = ds.sort; this.render(); break;
       case 'open-client': this.openClient(id); break;
       case 'back-clients': this.clientDetailId = null; this.render(); break;
