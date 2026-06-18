@@ -18,6 +18,9 @@ const AppShell = {
         { view: 'inbox', i18n: 'view.inbox', badge: 'inbox' },
         { view: 'calendar', i18n: 'view.calendar' },
         { view: 'timeline', i18n: 'view.timeline' },
+        { view: 'kanban', i18n: 'view.kanban' },
+        { view: 'contacts', i18n: 'view.contacts' },
+        { view: 'emails', i18n: 'view.emails' },
         { view: 'review', i18n: 'view.review' },
         { view: 'stats', i18n: 'view.stats' },
       ],
@@ -64,7 +67,10 @@ const AppShell = {
     },
   },
 
-  viewToHub(view) {
+  viewToHub(view, preferHubId) {
+    if (preferHubId && this.hubs[preferHubId]?.tabs.some((t) => t.view === view)) {
+      return preferHubId;
+    }
     for (const [hubId, hub] of Object.entries(this.hubs)) {
       if (hub.tabs.some((t) => t.view === view)) return hubId;
     }

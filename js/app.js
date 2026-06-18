@@ -346,10 +346,11 @@ const App = {
   },
 
   navigate(view, opts = {}) {
+    const source = opts.source || 'none';
     const prevView = this.currentView;
     const prevHub = this.currentHub || AppShell.viewToHub(prevView);
-    const newHub = AppShell.viewToHub(view);
-    const source = opts.source || 'none';
+    const preferHub = (source === 'tab' || source === 'hub') ? this.currentHub : null;
+    const newHub = AppShell.viewToHub(view, preferHub);
 
     const apply = () => {
       this.currentView = view;
