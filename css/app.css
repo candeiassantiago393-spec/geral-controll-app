@@ -202,6 +202,11 @@ a:hover {
   flex-wrap: wrap;
 }
 
+.kanban-move-done {
+  border-color: var(--green);
+  color: var(--green);
+}
+
 .brand-text h1 {
   font-size: 18px;
   font-weight: 700;

@@ -1139,6 +1139,21 @@ const Store = {
 
   getKanbanColumns() { return this._getConfigList('kanbanColumns'); },
 
+  getKanbanDoneColumn(cols = null) {
+    const columns = cols || this.getKanbanColumns();
+    return columns.find((c) => /done|feit|conclu|complete/i.test(c)) || columns[columns.length - 1] || 'Done';
+  },
+
+  getKanbanMoveTargets(currentCol, cols = null) {
+    const columns = cols || this.getKanbanColumns();
+    const doneCol = this.getKanbanDoneColumn(columns);
+    const maxOthers = doneCol !== currentCol ? 2 : 3;
+    const targets = [];
+    if (doneCol !== currentCol) targets.push(doneCol);
+    columns.filter((c) => c !== currentCol && !targets.includes(c)).slice(0, maxOthers).forEach((c) => targets.push(c));
+    return targets;
+  },
+
   getKanbanColumnForItem(item, cols = null) {
     const columns = cols || this.getKanbanColumns();
     if (columns.includes(item.kanbanStatus)) return item.kanbanStatus;

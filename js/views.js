@@ -1322,9 +1322,10 @@ const AppViews = {
     const priority = (item.priority === 'urgent' || item.priority === 'high')
       ? `<span class="kanban-card-priority priority-${item.priority}">${item.priority === 'urgent' ? '!!' : '!'}</span>`
       : '';
-    const moveBtns = cols.filter((c) => c !== col).slice(0, 3).map((c) =>
-      `<button type="button" class="btn btn-sm mini" data-kanban-move="${c}" data-id="${item.id}">→ ${Utils.esc(I18n.enum(c))}</button>`
-    ).join('');
+    const moveBtns = Store.getKanbanMoveTargets(col, cols).map((c) => {
+      const isDone = c === Store.getKanbanDoneColumn(cols);
+      return `<button type="button" class="btn btn-sm mini${isDone ? ' kanban-move-done' : ''}" data-kanban-move="${c}" data-id="${item.id}">→ ${Utils.esc(I18n.enum(c))}</button>`;
+    }).join('');
     return `<div class="kanban-card${done ? ' kanban-card--done' : ''}${item.priority === 'urgent' ? ' kanban-card--urgent' : ''}${item.priority === 'high' ? ' kanban-card--high' : ''}" data-action="open-item" data-id="${item.id}">
       <div class="kanban-card-head">
         <span class="kanban-card-type">${Utils.typeIcon(item.type)} ${Utils.typeLabel(item.type)}</span>

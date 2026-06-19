@@ -1026,7 +1026,16 @@ const App = {
       const kanbanMove = e.target.closest('[data-kanban-move]');
       if (kanbanMove && root.contains(kanbanMove)) {
         e.stopPropagation();
-        Store.updateItem(kanbanMove.dataset.id, { kanbanStatus: kanbanMove.dataset.kanbanMove });
+        const id = kanbanMove.dataset.id;
+        const targetCol = kanbanMove.dataset.kanbanMove;
+        const item = Store.getItem(id);
+        const updates = { kanbanStatus: targetCol };
+        const doneCol = Store.getKanbanDoneColumn();
+        if (item && (item.type === 'task' || item.type === 'checklist')) {
+          if (targetCol === doneCol) updates.completed = true;
+          else if (Store.getKanbanColumnForItem(item) === doneCol) updates.completed = false;
+        }
+        Store.updateItem(id, updates);
         this.refresh();
         return;
       }
