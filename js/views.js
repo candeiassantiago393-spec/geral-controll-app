@@ -1325,7 +1325,7 @@ const AppViews = {
     const moveBtns = cols.filter((c) => c !== col).slice(0, 3).map((c) =>
       `<button type="button" class="btn btn-sm mini" data-kanban-move="${c}" data-id="${item.id}">→ ${Utils.esc(I18n.enum(c))}</button>`
     ).join('');
-    return `<div class="kanban-card${done ? ' kanban-card--done' : ''}" data-action="open-item" data-id="${item.id}">
+    return `<div class="kanban-card${done ? ' kanban-card--done' : ''}${item.priority === 'urgent' ? ' kanban-card--urgent' : ''}${item.priority === 'high' ? ' kanban-card--high' : ''}" data-action="open-item" data-id="${item.id}">
       <div class="kanban-card-head">
         <span class="kanban-card-type">${Utils.typeIcon(item.type)} ${Utils.typeLabel(item.type)}</span>
         ${priority}
@@ -1345,6 +1345,7 @@ const AppViews = {
     return `${App.renderScopeBanner()}
       <div class="section-header"><div class="section-title">${I18n.t('view.kanban')} <span class="muted sm">(${items.length})</span></div></div>
       ${ws ? `<p class="muted sm mb">${I18n.t('kanban.inWorkspace').replace('{ws}', `${ws.icon} ${ws.label}`)}</p>` : `<p class="muted sm mb">${I18n.t('kanban.pickWorkspace')}</p>`}
+      ${App.renderKanbanPriorityFilters()}
       ${App.renderKanbanTypeFilters()}
       ${App.renderKanbanStatusFilters()}
       ${App.renderKanbanProjectFilters(scopedProjects)}

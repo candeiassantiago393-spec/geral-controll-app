@@ -47,6 +47,7 @@ const App = {
   timelineExpandedDays: {},
   kanbanItemTypeFilter: null,
   kanbanItemFilter: 'open',
+  kanbanPriorityFilter: 'all',
   _tickInterval: null,
 
   init() {
@@ -248,6 +249,20 @@ const App = {
     return html;
   },
 
+  renderKanbanPriorityFilters() {
+    const filters = [
+      ['all', 'project.filter.all'],
+      ['urgent', 'project.filter.urgent'],
+      ['high', 'field.priorityHigh'],
+      ['normal', 'field.priorityNormal'],
+      ['low', 'field.priorityLow'],
+    ];
+    return `<div class="filter-row mb kanban-priority-filters">
+      <span class="muted sm">${I18n.t('field.priority')}:</span>
+      ${filters.map(([f, key]) => `<button type="button" class="filter-chip filter-chip--priority filter-chip--priority-${f} ${this.kanbanPriorityFilter === f ? 'active' : ''}" data-action="kanban-priority-filter" data-priority="${f}">${I18n.t(key)}</button>`).join('')}
+    </div>`;
+  },
+
   renderKanbanTypeFilters() {
     const types = [['', 'project.filter.all'], ...Object.keys(ITEM_TYPES).map((k) => [k, k])];
     return `<div class="filter-row mb kanban-type-filters">
@@ -267,7 +282,6 @@ const App = {
       ['open', 'project.filter.open'],
       ['done', 'project.filter.done'],
       ['overdue', 'project.filter.overdue'],
-      ['urgent', 'project.filter.urgent'],
     ];
     return `<div class="filter-row mb kanban-status-filters">
       <span class="muted sm">${I18n.t('kanban.status')}:</span>
@@ -295,13 +309,28 @@ const App = {
       items = items.filter((i) => (i.type === 'task' || i.type === 'checklist') && i.completed);
     } else if (f === 'overdue') {
       items = items.filter((i) => Utils.isOverdue(i));
-    } else if (f === 'urgent') {
-      items = items.filter((i) => i.priority === 'urgent' || i.priority === 'high');
     }
     if (this.kanbanItemTypeFilter) {
       items = items.filter((i) => i.type === this.kanbanItemTypeFilter);
     }
-    return items;
+    const pf = this.kanbanPriorityFilter || 'all';
+    if (pf !== 'all') {
+      items = items.filter((i) => i.priority === pf);
+    }
+    return this.sortKanbanItems(items);
+  },
+
+  sortKanbanItems(items) {
+    const priorityRank = { urgent: 0, high: 1, normal: 2, low: 3 };
+    return [...items].sort((a, b) => {
+      const pa = priorityRank[a.priority] ?? 2;
+      const pb = priorityRank[b.priority] ?? 2;
+      if (pa !== pb) return pa - pb;
+      const da = a.dueDate || '9999-12-31';
+      const db = b.dueDate || '9999-12-31';
+      if (da !== db) return da.localeCompare(db);
+      return (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '');
+    });
   },
 
   clearProjectFilterIfOutOfScope() {
@@ -1825,6 +1854,10 @@ const App = {
         break;
       case 'kanban-item-filter':
         this.kanbanItemFilter = ds.filter || 'all';
+        this.render();
+        break;
+      case 'kanban-priority-filter':
+        this.kanbanPriorityFilter = ds.priority || 'all';
         this.render();
         break;
       case 'save-profile-photo': {
