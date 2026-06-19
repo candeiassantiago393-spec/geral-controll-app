@@ -145,19 +145,8 @@ a:hover {
 }
 
 .kanban-type-filters,
-.kanban-status-filters,
-.kanban-priority-filters {
+.kanban-status-filters {
   flex-wrap: wrap;
-}
-
-.filter-chip--priority-urgent.active {
-  border-color: #ff4757;
-  color: #ff4757;
-}
-
-.filter-chip--priority-high.active {
-  border-color: #ffa502;
-  color: #ffa502;
 }
 
 .kanban-card--urgent {

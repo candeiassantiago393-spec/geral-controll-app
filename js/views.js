@@ -1345,7 +1345,6 @@ const AppViews = {
     return `${App.renderScopeBanner()}
       <div class="section-header"><div class="section-title">${I18n.t('view.kanban')} <span class="muted sm">(${items.length})</span></div></div>
       ${ws ? `<p class="muted sm mb">${I18n.t('kanban.inWorkspace').replace('{ws}', `${ws.icon} ${ws.label}`)}</p>` : `<p class="muted sm mb">${I18n.t('kanban.pickWorkspace')}</p>`}
-      ${App.renderKanbanPriorityFilters()}
       ${App.renderKanbanTypeFilters()}
       ${App.renderKanbanStatusFilters()}
       ${App.renderKanbanProjectFilters(scopedProjects)}
