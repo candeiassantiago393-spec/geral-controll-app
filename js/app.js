@@ -45,6 +45,8 @@ const App = {
   areaFiltersCollapsed: false,
   timelineShowDone: false,
   timelineExpandedDays: {},
+  kanbanItemTypeFilter: null,
+  kanbanItemFilter: 'open',
   _tickInterval: null,
 
   init() {
@@ -244,6 +246,62 @@ const App = {
     });
     html += '</div>';
     return html;
+  },
+
+  renderKanbanTypeFilters() {
+    const types = [['', 'project.filter.all'], ...Object.keys(ITEM_TYPES).map((k) => [k, k])];
+    return `<div class="filter-row mb kanban-type-filters">
+      <span class="muted sm">${I18n.t('field.type')}:</span>
+      ${types.map(([type, key]) => {
+        const active = (type === '' && !this.kanbanItemTypeFilter) || this.kanbanItemTypeFilter === type;
+        const label = type === '' ? I18n.t('project.filter.all') : Utils.typeLabel(type);
+        const icon = type ? Utils.typeIcon(type) : '';
+        return `<button type="button" class="filter-chip ${active ? 'active' : ''}" data-action="kanban-item-type-filter" data-item-type="${type}">${icon ? `${icon} ` : ''}${Utils.esc(label)}</button>`;
+      }).join('')}
+    </div>`;
+  },
+
+  renderKanbanStatusFilters() {
+    const filters = [
+      ['all', 'project.filter.all'],
+      ['open', 'project.filter.open'],
+      ['done', 'project.filter.done'],
+      ['overdue', 'project.filter.overdue'],
+      ['urgent', 'project.filter.urgent'],
+    ];
+    return `<div class="filter-row mb kanban-status-filters">
+      <span class="muted sm">${I18n.t('kanban.status')}:</span>
+      ${filters.map(([f, key]) => `<button type="button" class="filter-chip ${this.kanbanItemFilter === f ? 'active' : ''}" data-action="kanban-item-filter" data-filter="${f}">${I18n.t(key)}</button>`).join('')}
+    </div>`;
+  },
+
+  getKanbanItems() {
+    const scopedProjects = this.filterProjects(Store.getActiveProjects());
+    const projectIds = new Set(scopedProjects.map((p) => p.id));
+    let items = this.filterItems(Store.getItems()).filter((i) =>
+      i.projectId ? projectIds.has(i.projectId) : !i.inbox
+    );
+    if (this.filters.projectId) {
+      items = items.filter((i) => i.projectId === this.filters.projectId);
+    }
+    return this.filterKanbanItems(items);
+  },
+
+  filterKanbanItems(items) {
+    const f = this.kanbanItemFilter || 'all';
+    if (f === 'open') {
+      items = items.filter((i) => (i.type === 'task' || i.type === 'checklist') ? !i.completed : true);
+    } else if (f === 'done') {
+      items = items.filter((i) => (i.type === 'task' || i.type === 'checklist') && i.completed);
+    } else if (f === 'overdue') {
+      items = items.filter((i) => Utils.isOverdue(i));
+    } else if (f === 'urgent') {
+      items = items.filter((i) => i.priority === 'urgent' || i.priority === 'high');
+    }
+    if (this.kanbanItemTypeFilter) {
+      items = items.filter((i) => i.type === this.kanbanItemTypeFilter);
+    }
+    return items;
   },
 
   clearProjectFilterIfOutOfScope() {
@@ -1759,6 +1817,14 @@ const App = {
       case 'proj-filter': this.projectFilter = ds.filter; this.render(); break;
       case 'kanban-proj-filter':
         this.filters.projectId = ds.id || null;
+        this.render();
+        break;
+      case 'kanban-item-type-filter':
+        this.kanbanItemTypeFilter = ds.itemType || null;
+        this.render();
+        break;
+      case 'kanban-item-filter':
+        this.kanbanItemFilter = ds.filter || 'all';
         this.render();
         break;
       case 'save-profile-photo': {

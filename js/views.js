@@ -1315,27 +1315,43 @@ const AppViews = {
       ${!items.length ? `<div class="empty-state"><p>${I18n.t('project.wishlist.empty')}</p></div>` : ''}`;
   },
 
+  renderKanbanCard(item, col, cols) {
+    const project = Store.getProject(item.projectId);
+    const done = (item.type === 'task' || item.type === 'checklist') && item.completed;
+    const due = item.dueDate ? `<span class="kanban-card-due ${Utils.isOverdue(item) ? 'overdue' : ''}">${Utils.fmtDate(item.dueDate)}</span>` : '';
+    const priority = (item.priority === 'urgent' || item.priority === 'high')
+      ? `<span class="kanban-card-priority priority-${item.priority}">${item.priority === 'urgent' ? '!!' : '!'}</span>`
+      : '';
+    const moveBtns = cols.filter((c) => c !== col).slice(0, 3).map((c) =>
+      `<button type="button" class="btn btn-sm mini" data-kanban-move="${c}" data-id="${item.id}">→ ${Utils.esc(I18n.enum(c))}</button>`
+    ).join('');
+    return `<div class="kanban-card${done ? ' kanban-card--done' : ''}" data-action="open-item" data-id="${item.id}">
+      <div class="kanban-card-head">
+        <span class="kanban-card-type">${Utils.typeIcon(item.type)} ${Utils.typeLabel(item.type)}</span>
+        ${priority}
+      </div>
+      <div class="kanban-card-title">${Utils.esc(item.title)}</div>
+      ${project ? `<div class="kanban-card-meta muted">${Utils.esc(project.name)}</div>` : ''}
+      ${due ? `<div class="kanban-card-meta">${due}</div>` : ''}
+      <div class="btn-row mt kanban-card-actions">${moveBtns}</div>
+    </div>`;
+  },
+
   renderKanban() {
     const scopedProjects = App.filterProjects(Store.getActiveProjects());
-    const projectIds = new Set(scopedProjects.map((p) => p.id));
-    let tasks = Store.getItems({ type: 'task' }).filter((i) =>
-      i.projectId ? projectIds.has(i.projectId) : !!i.kanbanStatus
-    );
-    if (App.filters.projectId) tasks = tasks.filter((t) => t.projectId === App.filters.projectId);
+    const items = App.getKanbanItems();
+    const cols = Store.getKanbanColumns();
     const ws = App.workspace ? Store.getWorkspaces()[App.workspace] : null;
     return `${App.renderScopeBanner()}
-      <div class="section-header"><div class="section-title">${I18n.t('view.kanban')}</div></div>
+      <div class="section-header"><div class="section-title">${I18n.t('view.kanban')} <span class="muted sm">(${items.length})</span></div></div>
       ${ws ? `<p class="muted sm mb">${I18n.t('kanban.inWorkspace').replace('{ws}', `${ws.icon} ${ws.label}`)}</p>` : `<p class="muted sm mb">${I18n.t('kanban.pickWorkspace')}</p>`}
+      ${App.renderKanbanTypeFilters()}
+      ${App.renderKanbanStatusFilters()}
       ${App.renderKanbanProjectFilters(scopedProjects)}
-      <div class="kanban-board">${Store.getKanbanColumns().map((col) => {
-        const cols = Store.getKanbanColumns();
-        const colTasks = tasks.filter((t) => Store.getKanbanColumnForItem(t, cols) === col);
-        return `<div class="kanban-col"><div class="kanban-col-header">${Utils.esc(I18n.enum(col))} (${colTasks.length})</div>
-          ${colTasks.map((t) => `<div class="kanban-card" data-action="open-item" data-id="${t.id}">
-            <div style="font-weight:600">${Utils.esc(t.title)}</div>
-            <div class="muted">${Utils.esc(Store.getProject(t.projectId)?.name||'')}</div>
-            <div class="btn-row mt">${cols.filter((c)=>c!==col).slice(0,2).map((c)=>`<button class="btn btn-sm mini" data-kanban-move="${c}" data-id="${t.id}">→ ${Utils.esc(I18n.enum(c))}</button>`).join('')}</div>
-          </div>`).join('')||'<p class="muted">—</p>'}</div>`;
+      <div class="kanban-board">${cols.map((col) => {
+        const colItems = items.filter((i) => Store.getKanbanColumnForItem(i, cols) === col);
+        return `<div class="kanban-col"><div class="kanban-col-header">${Utils.esc(I18n.enum(col))} (${colItems.length})</div>
+          ${colItems.map((i) => this.renderKanbanCard(i, col, cols)).join('') || '<p class="muted">—</p>'}</div>`;
       }).join('')}</div>`;
   },
 

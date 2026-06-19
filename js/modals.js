@@ -271,6 +271,9 @@ const AppModals = {
       const lines = (ctx?.checklistItems || [{ text: '', done: false }]).map((c) => c.text).join('\n');
       html += `<div class="form-group"><label>${I18n.t('field.checklistItems')}</label><textarea class="form-control" name="checklistText" rows="4" placeholder="${Utils.esc(I18n.t('field.checklistPlaceholder'))}">${Utils.esc(lines)}</textarea></div>`;
     }
+    if (type !== 'task' && type !== 'checklist') {
+      html += `<div class="form-group"><label>${I18n.t('field.kanban')}</label><select class="form-control" name="kanbanStatus">${I18n.selectOptionsText(Store.getKanbanColumns(), ctx?.kanbanStatus || 'To do')}</select></div>`;
+    }
     return html;
   },
 
@@ -669,6 +672,8 @@ const AppModals = {
       if (data.type === 'task' || data.type === 'checklist') {
         if (!data.workStatus) data.workStatus = 'In progress';
         if (!data.kanbanStatus) data.kanbanStatus = 'To do';
+      } else if (!data.kanbanStatus) {
+        data.kanbanStatus = 'To do';
       }
       const schedule = this.parseScheduleFromForm(fd);
       data.scheduleMode = schedule.scheduleMode;
